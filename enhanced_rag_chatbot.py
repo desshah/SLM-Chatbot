@@ -352,11 +352,17 @@ Answer using ONLY the information above:
         
         return response
     
-    def generate_summary_with_citations(self, query: str, context: str, sources: List[Dict]) -> str:
+    def generate_summary_with_citations(self, query: str, context: str, sources: List[Dict], history: str = None) -> str:
         """
         SUMMARIZATION MODE — Uses LLM to generate concise summaries with citations
         
         Generate a natural, concise summary from the context and add inline citations.
+        
+        Args:
+            query: User's question
+            context: Retrieved context from vector DB
+            sources: Source documents with URLs
+            history: Optional conversation history (for follow-up questions)
         
         Rules:
         - Use LLM to synthesize information from multiple sources
@@ -366,6 +372,11 @@ Answer using ONLY the information above:
         - If context insufficient: acknowledge limitations
         """
         
+        # Build history context if provided
+        history_context = ""
+        if history:
+            history_context = f"\nPrevious conversation:\n{history}\n"
+        
         # Build a specialized prompt for summarization
         prompt = f"""<|system|>
 You are a helpful assistant that provides concise summaries with citations. 
@@ -373,7 +384,7 @@ Summarize the answer to the question in 2-4 clear sentences using the Context be
 Focus on factual, technical details. Avoid marketing language.
 After each key fact, add a citation: [Source: doc1], [Source: doc2], etc.
 <|user|>
-Context:
+{history_context}Context:
 {context[:1500]}
 
 Question: {query}
@@ -610,6 +621,191 @@ Provide a concise 2-4 sentence summary with inline citations:
         
         return answer
     
+    def classify_query_type(self, query: str) -> str:
+        """
+        Classify query into categories to decide history usage
+        
+        Returns:
+            - "independent": New topic, no history needed
+            - "follow_up": Needs previous context (elaboration, clarification)
+            - "recall": Asking about conversation itself
+        """
+        query_lower = query.lower().strip()
+        
+        # 1. RECALL queries (asking about conversation)
+        recall_indicators = [
+            'what did i ask', 'what was my question', 'what did we talk about',
+            'earlier you said', 'you mentioned', 'my previous question',
+            'our conversation', 'what have we discussed', 'remind me what'
+        ]
+        
+        if any(ind in query_lower for ind in recall_indicators):
+            return "recall"
+        
+        # 2. INDEPENDENT queries (new topics, facts, greetings)
+        independent_indicators = [
+            # Greetings
+            'hello', 'hi ', 'hey', 'good morning', 'good afternoon',
+            # Full questions (usually new topics)
+            'what is rackspace', 'what are rackspace', 'who is rackspace',
+            'what services does', 'what does rackspace',
+            # List/overview requests
+            'list', 'show me', 'give me a list'
+        ]
+        
+        # Check if starts with common question words (likely independent)
+        starts_with_wh = any(query_lower.startswith(q) for q in [
+            'what is', 'what are', 'who is', 'who are', 
+            'when is', 'when was', 'where is', 'where are',
+            'which ', 'how much', 'how many'
+        ])
+        
+        # Check independent indicators
+        has_independent = any(ind in query_lower for ind in independent_indicators)
+        
+        if has_independent or (starts_with_wh and len(query_lower.split()) > 4):
+            return "independent"
+        
+        # 3. FOLLOW-UP queries (needs history)
+        follow_up_indicators = [
+            # Pronouns (it, that, this, them, they)
+            ' it ', ' it?', ' it.', 'about it', 'with it', 'of it',
+            ' that ', ' that?', ' that.', 'about that', 'with that',
+            ' this ', ' this?', ' this.', 'about this', 'with this',
+            ' them ', ' them?', ' they ', ' their ', 'those ',
+            
+            # Continuation words
+            'more about', 'tell me more', 'elaborate', 'explain that',
+            'why did you', 'how did you', 'can you explain',
+            'what do you mean', 'clarify', 'expand on', 'go deeper',
+            
+            # Comparative/relational
+            'compared to', 'difference between', 'versus',
+            'how does that', 'why does that', 'what about that'
+        ]
+        
+        # Short queries are usually follow-ups
+        is_short = len(query_lower.split()) <= 5
+        has_follow_up = any(ind in query_lower for ind in follow_up_indicators)
+        
+        if has_follow_up or (is_short and not starts_with_wh):
+            return "follow_up"
+        
+        # Default: independent (new topic)
+        return "independent"
+    
+    def handle_recall(self, query: str) -> str:
+        """Handle queries asking about conversation history"""
+        if not self.conversation_history:
+            return "This is the beginning of our conversation. You haven't asked any questions yet."
+        
+        # Return formatted history
+        if len(self.conversation_history) == 1:
+            first_q = self.conversation_history[0]['user']
+            return f"You asked: '{first_q}'"
+        else:
+            response = "Here's our conversation so far:\n\n"
+            for i, exchange in enumerate(self.conversation_history, 1):
+                response += f"{i}. You asked: '{exchange['user']}'\n"
+            return response
+    
+    def extract_subject(self, question: str) -> str:
+        """Extract main subject from question for pronoun resolution"""
+        question_lower = question.lower()
+        
+        # Patterns: "tell me about X", "what is X", "how does X"
+        patterns = [
+            ('tell me about ', 4),
+            ('what is ', 3),
+            ('what are ', 3),
+            ('how does ', 3),
+            ('how do ', 3),
+            ('what does ', 3),
+            ('about ', 2)
+        ]
+        
+        for pattern, max_words in patterns:
+            if pattern in question_lower:
+                subject = question_lower.split(pattern)[-1].strip()
+                # Take first few words
+                subject_words = subject.split()[:max_words]
+                # Remove question marks
+                subject = ' '.join(subject_words).replace('?', '').strip()
+                if subject:
+                    return subject
+        
+        return ""
+    
+    def rewrite_query_with_history(self, query: str, history: str) -> str:
+        """
+        Rewrite follow-up query with relevant history context
+        Simple concatenation approach (no LLM needed)
+        """
+        if not history:
+            return query
+        
+        # Extract last question from history
+        history_lines = history.strip().split('\n')
+        last_question = None
+        
+        for line in history_lines:
+            if line.startswith('User:'):
+                last_question = line.replace('User:', '').strip()
+        
+        if not last_question:
+            return query
+        
+        query_lower = query.lower()
+        
+        # Resolve pronouns
+        query_resolved = query
+        
+        # Replace "it" with subject from last question
+        if ' it ' in query_lower or query_lower.endswith('it?') or query_lower.startswith('it '):
+            subject = self.extract_subject(last_question)
+            if subject:
+                query_resolved = query_resolved.replace(' it ', f' {subject} ')
+                query_resolved = query_resolved.replace('it?', f'{subject}?')
+                query_resolved = query_resolved.replace('It ', f'{subject.capitalize()} ')
+        
+        # Replace "that" similarly
+        if ' that ' in query_lower or query_lower.endswith('that?'):
+            subject = self.extract_subject(last_question)
+            if subject:
+                query_resolved = query_resolved.replace(' that ', f' {subject} ')
+                query_resolved = query_resolved.replace('that?', f'{subject}?')
+        
+        # Replace "this" similarly
+        if ' this ' in query_lower or query_lower.endswith('this?'):
+            subject = self.extract_subject(last_question)
+            if subject:
+                query_resolved = query_resolved.replace(' this ', f' {subject} ')
+                query_resolved = query_resolved.replace('this?', f'{subject}?')
+        
+        # For elaboration requests, combine with original question
+        if any(word in query_lower for word in ['more', 'elaborate', 'explain', 'why did you', 'how did you']):
+            query_resolved = f"{last_question} - {query_resolved}"
+        
+        return query_resolved
+    
+    def get_recent_history(self, n: int = 2) -> str:
+        """Get last N exchanges formatted for context"""
+        if not self.conversation_history:
+            return ""
+        
+        recent = self.conversation_history[-n:] if len(self.conversation_history) >= n else self.conversation_history
+        
+        history_str = ""
+        for exchange in recent:
+            history_str += f"User: {exchange['user']}\n"
+            # Truncate assistant response to save tokens
+            assistant_response = exchange['assistant'][:200]
+            if len(exchange['assistant']) > 200:
+                assistant_response += "..."
+            history_str += f"Assistant: {assistant_response}\n\n"
+        
+        return history_str
+    
     def chat(self, user_message: str, mode: str = "extract") -> str:
         """
         Main chat interface with DUAL MODE support
@@ -626,19 +822,36 @@ Provide a concise 2-4 sentence summary with inline citations:
         print(f"\n📝 Processing: {user_message}")
         print(f"🎯 Mode: {mode.upper()}")
         
-        # Detect if user is asking for a list of services
+        # 1. CLASSIFY QUERY TYPE (intelligent context detection)
+        query_type = self.classify_query_type(user_message)
+        print(f"🔍 Query type: {query_type.upper()}")
+        
+        # 2. HANDLE RECALL QUERIES (return from history directly)
+        if query_type == "recall":
+            return self.handle_recall(user_message)
+        
+        # 3. REWRITE QUERY IF FOLLOW-UP (with history context)
+        if query_type == "follow_up":
+            history_context = self.get_recent_history(n=2)
+            search_query = self.rewrite_query_with_history(user_message, history_context)
+            print(f"✅ Using history - Rewritten: {search_query[:80]}...")
+        else:
+            search_query = user_message
+            print(f"🆕 New topic - Using original query")
+        
+        # 4. DETECT LIST QUERIES
         list_keywords = ['list', 'services', 'offer', 'provide', 'what does rackspace',
                         'tell me about services', 'what are the services', 'which services']
         is_list_query = any(keyword in user_message.lower() for keyword in list_keywords)
         
-        # Retrieve context (get more docs for list queries)
+        # 5. RETRIEVE CONTEXT (use rewritten query for better results)
         top_k = 10 if is_list_query else 5
-        context, sources = self.retrieve_context(user_message, top_k=top_k)
+        context, sources = self.retrieve_context(search_query, top_k=top_k)
         
         if not context:
             return "I couldn't find relevant information to answer your question. Please try rephrasing or ask about Rackspace's cloud services, security, migration, or professional services."
         
-        # For service list queries, use service extractor (works for both modes)
+        # 6. FOR SERVICE LIST QUERIES, use service extractor (works for both modes)
         if is_list_query:
             print("🔍 Using extractive approach for service list")
             extractive_response = self.extract_services_list(context, sources)
@@ -652,15 +865,17 @@ Provide a concise 2-4 sentence summary with inline citations:
                     self.conversation_history = self.conversation_history[-5:]
                 return extractive_response
         
-        # Route to appropriate method based on mode
+        # 7. GENERATE RESPONSE based on mode (with conditional history)
         if mode == "summarize":
             print("📝 Using SUMMARIZATION mode - LLM generates concise summary with citations")
-            response = self.generate_summary_with_citations(user_message, context, sources)
+            # Pass history ONLY for follow-ups
+            history = self.get_recent_history(n=2) if query_type == "follow_up" else None
+            response = self.generate_summary_with_citations(user_message, context, sources, history=history)
         else:  # mode == "extract" (default)
             print("🔍 Using EXTRACTION mode - returning exact document excerpts")
             response = self.extract_answer_from_context(user_message, context, sources)
         
-        # Update history
+        # 8. UPDATE HISTORY (sliding window - keep last 5)
         self.conversation_history.append({
             'user': user_message,
             'assistant': response
