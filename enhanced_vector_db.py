@@ -15,7 +15,7 @@ from typing import List, Dict
 import re
 
 from config import (
-    DATA_DIR, VECTOR_DB_DIR, EMBEDDING_MODEL_NAME,
+    DATA_DIR, VECTOR_DB_DIR, EMBEDDING_MODEL,
     CHUNK_SIZE, CHUNK_OVERLAP
 )
 
@@ -33,8 +33,8 @@ class EnhancedVectorDBManager:
         )
         
         # Initialize embedding model
-        print(f"📦 Loading embedding model: {EMBEDDING_MODEL_NAME}")
-        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        print(f"📦 Loading embedding model: {EMBEDDING_MODEL}")
+        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         
         # Get or create collection
         try:
@@ -151,8 +151,9 @@ class EnhancedVectorDBManager:
         qa_added = 0
         
         for qa in qa_pairs:
-            question = qa.get('question', '')
-            answer = qa.get('answer', '')
+            # Support both formats: 'question'/'answer' and 'instruction'/'output'
+            question = qa.get('question', qa.get('instruction', ''))
+            answer = qa.get('answer', qa.get('output', ''))
             context = qa.get('context', '')
             
             if not question or not answer:
