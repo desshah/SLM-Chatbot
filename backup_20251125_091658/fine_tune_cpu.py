@@ -143,8 +143,8 @@ class CPUFineTuner:
             warmup_steps=100,
             logging_steps=50,
             eval_steps=200,
-            save_steps=500,
-            evaluation_strategy="steps",
+            save_steps=400,  # Must be multiple of eval_steps
+            eval_strategy="steps",
             save_strategy="steps",
             load_best_model_at_end=True,
             metric_for_best_model="eval_loss",

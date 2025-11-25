@@ -100,14 +100,15 @@ class EnhancedVectorDBManager:
         return qa_pairs
     
     def build_database(self):
-        """Build enhanced vector database with both documents and training data"""
+        """Build vector database with ONLY real documents (NO Q&A pairs!)"""
         print("\n" + "="*80)
-        print("🚀 BUILDING ENHANCED VECTOR DATABASE")
+        print("🚀 BUILDING VECTOR DATABASE (RAG - Real Documents Only)")
         print("="*80)
+        print("\n⚠️  NOTE: Training Q&A pairs are for fine-tuning ONLY!")
+        print("⚠️  Vector DB should contain ONLY actual web content with URLs\n")
         
         # Load data
         documents = self.load_documents()
-        qa_pairs = self.load_training_data()
         
         if not documents:
             print("❌ No documents to index!")
@@ -118,10 +119,12 @@ class EnhancedVectorDBManager:
         all_ids = []
         chunk_id = 0
         
-        # Phase 1: Index document chunks
-        print("\n📍 Phase 1: Indexing document chunks...")
+        # Index ONLY document chunks (no Q&A pairs!)
+        print("\n📍 Indexing real document chunks from web crawl...")
         for doc_idx, doc in enumerate(documents):
             content = doc.get('content', '')
+            url = doc.get('url', 'unknown')
+            title = doc.get('title', 'Untitled')
             
             if not content or len(content) < 100:
                 continue
@@ -133,10 +136,10 @@ class EnhancedVectorDBManager:
             for chunk in chunks:
                 all_chunks.append(chunk)
                 all_metadatas.append({
-                    'source': 'document',
-                    'url': doc.get('url', 'unknown'),
-                    'title': doc.get('title', 'Untitled'),
-                    'type': 'content'
+                    'source': url,  # ACTUAL URL!
+                    'url': url,
+                    'title': title,
+                    'type': 'document'
                 })
                 all_ids.append(f"doc_{chunk_id}")
                 chunk_id += 1
@@ -144,59 +147,10 @@ class EnhancedVectorDBManager:
             if (doc_idx + 1) % 50 == 0:
                 print(f"   Processed {doc_idx + 1}/{len(documents)} documents...")
         
-        print(f"✅ Created {len(all_chunks)} chunks from documents")
+        print(f"✅ Created {len(all_chunks)} chunks from {len(documents)} real documents")
         
-        # Phase 2: Index training Q&A pairs
-        print("\n📍 Phase 2: Indexing training Q&A pairs...")
-        qa_added = 0
-        
-        for qa in qa_pairs:
-            # Support both formats: 'question'/'answer' and 'instruction'/'output'
-            question = qa.get('question', qa.get('instruction', ''))
-            answer = qa.get('answer', qa.get('output', ''))
-            context = qa.get('context', '')
-            
-            if not question or not answer:
-                continue
-            
-            # Add Q&A pair as searchable content
-            # Format: "Q: question\nA: answer"
-            qa_text = f"Question: {question}\n\nAnswer: {answer}"
-            
-            # Clean
-            qa_text = self.clean_text(qa_text)
-            
-            # Only add if substantial
-            if len(qa_text) > 100:
-                all_chunks.append(qa_text)
-                all_metadatas.append({
-                    'source': 'training_qa',
-                    'question': question,
-                    'type': 'qa_pair'
-                })
-                all_ids.append(f"qa_{qa_added}")
-                qa_added += 1
-            
-            # Also add context if available and different
-            if context and len(context) > 100:
-                context_cleaned = self.clean_text(context)
-                # Chunk context if too long
-                context_chunks = self.chunk_text(context_cleaned)
-                
-                for ctx_chunk in context_chunks[:2]:  # Max 2 chunks per context
-                    all_chunks.append(ctx_chunk)
-                    all_metadatas.append({
-                        'source': 'training_context',
-                        'question': question,
-                        'type': 'context'
-                    })
-                    all_ids.append(f"ctx_{chunk_id}")
-                    chunk_id += 1
-        
-        print(f"✅ Added {qa_added} Q&A pairs to index")
-        
-        # Phase 3: Generate embeddings and add to ChromaDB
-        print(f"\n📍 Phase 3: Generating embeddings for {len(all_chunks)} chunks...")
+        # Phase 2: Generate embeddings and add to ChromaDB
+        print(f"\n📍 Generating embeddings for {len(all_chunks)} chunks...")
         
         # Add in batches to avoid memory issues
         batch_size = 100

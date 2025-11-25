@@ -80,10 +80,10 @@ class EnhancedRAGChatbot:
         # Search vector database
         results = self.collection.query(
             query_embeddings=[query_embedding.tolist()],
-            n_results=top_k * 2  # Get more to filter
+            n_results=top_k
         )
         
-        # Process and filter results
+        # Process results - ONLY real documents with URLs
         context_parts = []
         sources = []
         seen_content = set()
@@ -95,24 +95,14 @@ class EnhancedRAGChatbot:
                 continue
             seen_content.add(doc_hash)
             
-            # Prioritize Q&A pairs
-            if metadata.get('source') == 'training_qa':
-                context_parts.insert(0, doc)  # Add at beginning
-                sources.insert(0, {
-                    'type': 'Q&A',
-                    'question': metadata.get('question', 'N/A')
-                })
-            else:
-                context_parts.append(doc)
-                sources.append({
-                    'type': 'Document',
-                    'url': metadata.get('url', 'N/A'),
-                    'title': metadata.get('title', 'N/A')
-                })
+            # Add document chunk
+            context_parts.append(doc)
             
-            # Limit to top_k after filtering
-            if len(context_parts) >= top_k:
-                break
+            # Add source (ACTUAL URL!)
+            sources.append({
+                'url': metadata.get('url', 'N/A'),
+                'title': metadata.get('title', 'N/A')
+            })
         
         # Combine context
         context = '\n\n'.join(context_parts)
@@ -120,32 +110,17 @@ class EnhancedRAGChatbot:
         return context, sources
     
     def build_prompt(self, query: str, context: str, history: List[Dict[str, str]]) -> str:
-        """Build prompt for the model"""
-        # Include recent conversation history (last 2 exchanges)
-        history_text = ""
-        if history:
-            recent_history = history[-2:]
-            for exchange in recent_history:
-                history_text += f"User: {exchange['user']}\nAssistant: {exchange['assistant']}\n\n"
+        """Build prompt for the model - Claude-like: concise, accurate, context-based"""
         
         prompt = f"""<|system|>
-You are a helpful Rackspace technical support assistant. Use the provided context to answer questions accurately and concisely.
-
-Rules:
-1. Answer ONLY using information from the context provided
-2. If the context contains a Q&A pair that matches the question, use that answer
-3. Be specific and technical when appropriate
-4. If the context doesn't contain the answer, say "I don't have specific information about that in my knowledge base"
-5. Never make up information
-6. Be concise but complete
-
+You are a Rackspace support assistant. Answer the question concisely using ONLY the context provided. Keep responses brief (2-3 sentences). If the context doesn't contain the answer, say "I don't have information about that."
 <|user|>
-{history_text}Context:
+Context:
 {context}
 
 Question: {query}
-
-<|assistant|>"""
+<|assistant|>
+"""
         
         return prompt
     
@@ -155,16 +130,16 @@ Question: {query}
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         
-        # Generate
+        # Generate - Claude-like: concise and accurate
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=200,
-                temperature=0.7,
+                max_new_tokens=100,  # SHORT: Force concise answers (2-3 sentences)
+                temperature=0.3,
                 do_sample=True,
-                top_p=0.9,
-                repetition_penalty=1.3,
-                no_repeat_ngram_size=4,
+                top_p=0.85,
+                repetition_penalty=1.2,
+                no_repeat_ngram_size=3,
                 pad_token_id=self.tokenizer.eos_token_id
             )
         
@@ -174,6 +149,28 @@ Question: {query}
         # Extract only the assistant's response
         if "<|assistant|>" in response:
             response = response.split("<|assistant|>")[-1].strip()
+        
+        # Remove system prompt leakage
+        lines = response.split('\n')
+        clean_lines = []
+        skip_system = False
+        
+        for line in lines:
+            line = line.strip()
+            # Skip system prompt patterns
+            if any(pattern in line.lower() for pattern in [
+                'you are a', 'rackspace support assistant', 
+                'answer the question', 'context:', 'question:'
+            ]):
+                skip_system = True
+                continue
+            if skip_system and not line:
+                continue
+            if line:
+                skip_system = False
+                clean_lines.append(line)
+        
+        response = ' '.join(clean_lines)
         
         # Clean up
         response = self.clean_response(response)
@@ -202,33 +199,50 @@ Question: {query}
         
         return text.strip()
     
-    def format_sources(self, sources: List[Dict]) -> str:
-        """Format sources for display"""
+    def format_sources(self, sources: List[Dict], response: str = "") -> str:
+        """Format sources for display - Add 'Learn more' only if helpful"""
         if not sources:
             return ""
         
         source_text = "\n\n📚 **Sources:**\n"
-        for i, source in enumerate(sources[:3], 1):  # Show top 3 sources
-            if source['type'] == 'Q&A':
-                source_text += f"{i}. Training Q&A: {source['question']}\n"
-            else:
-                source_text += f"{i}. {source['title']}: {source['url']}\n"
+        
+        # Show unique URLs only
+        seen_urls = set()
+        count = 1
+        first_url = None
+        
+        for source in sources:
+            url = source.get('url', '')
+            if url and url != 'N/A' and url not in seen_urls:
+                if count == 1:
+                    first_url = url
+                seen_urls.add(url)
+                source_text += f"{count}. {url}\n"
+                count += 1
+                if count > 3:  # Max 3 sources
+                    break
+        
+        # Add "Learn more" ONLY if response seems complete and informative
+        # (Not for "I don't have information" responses)
+        if first_url and response and len(response) > 50:
+            if "don't have" not in response.lower() and "no information" not in response.lower():
+                source_text += f"\n💡 **Learn more:** {first_url}\n"
         
         return source_text
     
     def chat(self, user_message: str) -> str:
-        """Main chat interface"""
+        """Main chat interface - Claude-like: accurate, concise, context-based"""
         # Retrieve relevant context
         context, sources = self.retrieve_context(user_message)
         
-        # Build prompt with history
+        # Build prompt with context
         prompt = self.build_prompt(user_message, context, self.conversation_history)
         
         # Generate response
         response = self.generate_response(prompt)
         
-        # Add sources
-        response_with_sources = response + self.format_sources(sources)
+        # Add sources with conditional "Learn more"
+        response_with_sources = response + self.format_sources(sources, response)
         
         # Update conversation history
         self.conversation_history.append({
