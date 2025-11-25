@@ -140,21 +140,30 @@ class RAGChatbot:
         return context
     
     def build_prompt(self, user_message: str, context: str) -> str:
-        """Build prompt with history and context"""
+        """Build optimized prompt with history and context for accurate responses"""
         # Get conversation history
         history_text = self.conversation.get_history_text()
         
-        # Build prompt
-        prompt = "<|system|>\nYou are a helpful assistant that answers questions about Rackspace Technology. "
-        prompt += "Use the provided context and conversation history to give accurate, relevant answers.\n\n"
+        # Enhanced prompt engineering for accuracy and user-friendliness
+        prompt = "<|system|>\n"
+        prompt += "You are a Rackspace Technology expert. Answer questions using ONLY the information provided in the context below.\n\n"
+        prompt += "CRITICAL RULES:\n"
+        prompt += "1. Use ONLY facts from the CONTEXT section below - do not make up information\n"
+        prompt += "2. If the context doesn't contain the answer, say 'I don't have specific information about that in my knowledge base'\n"
+        prompt += "3. Be direct and concise - answer in 2-4 sentences maximum\n"
+        prompt += "4. Do not repeat phrases or generate lists unless they are in the context\n"
+        prompt += "5. Quote specific facts from the context when possible\n\n"
         
         if context:
-            prompt += f"Context:\n{context}\n\n"
+            prompt += f"CONTEXT (Your ONLY source of information):\n{context}\n\n"
+        else:
+            prompt += "CONTEXT: No relevant information found.\n\n"
         
         if history_text:
-            prompt += f"{history_text}\n"
+            prompt += f"PREVIOUS CONVERSATION:\n{history_text}\n"
         
-        prompt += f"<|user|>\n{user_message}\n<|assistant|>\n"
+        prompt += f"USER QUESTION: {user_message}\n\n"
+        prompt += "<|assistant|>\n"
         
         return prompt
     
@@ -166,16 +175,38 @@ class RAGChatbot:
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=MAX_NEW_TOKENS,
-                temperature=TEMPERATURE,
-                top_p=TOP_P,
-                do_sample=DO_SAMPLE,
+                max_new_tokens=100,  # Shorter for more focused responses
+                temperature=1.0,  # No temperature (deterministic)
+                do_sample=False,  # Greedy decoding - most likely tokens
                 pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id
+                eos_token_id=self.tokenizer.eos_token_id,
+                num_beams=1,  # No beam search
+                repetition_penalty=1.2,  # Penalize repetition
+                no_repeat_ngram_size=3  # Prevent repeating 3-grams
             )
         
         # Decode only the new tokens (response)
         response = self.tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
+        
+        # Clean up response - remove repetitions
+        response = response.strip()
+        
+        # Stop at first sentence if it's repeating
+        sentences = response.split('.')
+        if len(sentences) > 1:
+            # Check if sentences are repeating
+            seen = set()
+            clean_sentences = []
+            for sent in sentences:
+                sent_clean = sent.strip().lower()
+                if sent_clean and sent_clean not in seen and len(sent_clean) > 10:
+                    seen.add(sent_clean)
+                    clean_sentences.append(sent.strip())
+            
+            if clean_sentences:
+                response = '. '.join(clean_sentences[:3])  # Max 3 sentences
+                if not response.endswith('.'):
+                    response += '.'
         
         return response.strip()
     
@@ -200,11 +231,35 @@ class RAGChatbot:
         logger.info(f"User: {user_message}")
         context = self.retrieve_context(user_message)
         
-        # Build prompt with history and context
-        prompt = self.build_prompt(user_message, context)
+        # If no context found, return helpful message
+        if not context or len(context.strip()) < 50:
+            response = "I don't have specific information about that in my Rackspace knowledge base. Could you try rephrasing your question or ask about Rackspace's services, mission, or cloud platforms?"
+            self.conversation.add_turn(user_message, response)
+            logger.info(f"Assistant: {response}")
+            return response
         
-        # Generate response
-        response = self.generate_response(prompt)
+        # Extract key sentences from context (extractive approach)
+        # This is more reliable than generative for base models
+        sentences = []
+        for line in context.split('\n'):
+            line = line.strip()
+            if line and len(line) > 30 and not line.startswith('[Source'):
+                # Clean up the line
+                if ':' in line:
+                    line = line.split(':', 1)[1].strip()
+                sentences.append(line)
+        
+        # Take first 2-3 most relevant sentences
+        if sentences:
+            response = ' '.join(sentences[:3])
+            # Clean up
+            if len(response) > 400:
+                response = response[:400] + '...'
+        else:
+            # Fallback to generation if extraction fails
+            prompt = self.build_prompt(user_message, context)
+            response = self.generate_response(prompt)
+        
         logger.info(f"Assistant: {response}")
         
         # Add to conversation history

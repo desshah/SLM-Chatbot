@@ -50,19 +50,44 @@ DO_SAMPLE = True
 # Chat history configuration
 MAX_HISTORY_LENGTH = 5  # Number of conversation turns to maintain
 
-# Data collection URLs - Comprehensive BFS crawling
+# Data collection URLs - Comprehensive coverage of ALL Rackspace domains
 RACKSPACE_URLS = [
+    # Main website - complete sections
     "https://www.rackspace.com/",
+    "https://www.rackspace.com/cloud",
+    "https://www.rackspace.com/cloud-services",
+    "https://www.rackspace.com/managed-services",
+    "https://www.rackspace.com/professional-services",
+    "https://www.rackspace.com/security",
+    "https://www.rackspace.com/data-services",
+    "https://www.rackspace.com/solutions",
+    "https://www.rackspace.com/applications",
+    "https://www.rackspace.com/multicloud",
+    "https://www.rackspace.com/company",
     "https://www.rackspace.com/blog",
     "https://www.rackspace.com/resources",
-    "https://www.rackspace.com/company",
-    "https://www.rackspace.com/cloud",
-    "https://www.rackspace.com/managed-services",
-    "https://www.rackspace.com/security",
+    "https://www.rackspace.com/industries",
+    "https://www.rackspace.com/partners",
+    
+    # Documentation sites - comprehensive technical docs
     "https://docs.rackspace.com/",
+    "https://docs.rackspace.com/docs",
     "https://docs-ospc.rackspace.com/",
-    "https://spot.rackspace.com/",
+    
+    # Developer resources
     "https://developer.rackspace.com/",
+    "https://developer.rackspace.com/docs",
+    
+    # Product-specific
+    "https://www.rackspace.com/aws",
+    "https://www.rackspace.com/microsoft-azure",
+    "https://www.rackspace.com/google-cloud",
+    "https://www.rackspace.com/vmware",
+    "https://www.rackspace.com/openstack",
+    
+    # SPOT marketplace
+    "https://spot.rackspace.com/",
+    "https://spot.rackspace.com/innovations",
 ]
 
 # Allowed domains for crawling (BFS will stay within these)
@@ -75,11 +100,12 @@ ALLOWED_DOMAINS = [
     "developer.rackspace.com",
 ]
 
-# Crawling configuration
-MAX_CRAWL_DEPTH = 3  # How deep to follow links
-MAX_PAGES_PER_DOMAIN = 100  # Maximum pages to crawl per domain
-CRAWL_DELAY = 1.0  # Delay between requests (seconds)
-REQUEST_TIMEOUT = 15  # Request timeout (seconds)
+# Enhanced crawling configuration for comprehensive data collection
+MAX_CRAWL_DEPTH = 4  # Go deeper for better coverage
+MAX_PAGES_PER_DOMAIN = 200  # More pages per domain
+CRAWL_DELAY = 0.5  # Faster crawling (still polite)
+REQUEST_TIMEOUT = 20  # Longer timeout for complex pages
+MIN_CONTENT_LENGTH = 200  # Minimum text length to be useful
 
 # Device configuration (for M3 Mac)
 DEVICE = "mps"  # Metal Performance Shaders for Apple Silicon

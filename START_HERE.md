@@ -17,11 +17,16 @@ A **complete AI chatbot system** where YOU:
 source venv/bin/activate
 ./build_pipeline.sh
 
-# 3. Launch chatbot
+# 3. Launch chatbot (Choose one):
+# Option A: Streamlit UI (Recommended - simpler & faster)
+./start_streamlit.sh
+
+# Option B: Gradio UI (Alternative)
 python app.py
 ```
 
-Then open: **http://localhost:7860**
+**Streamlit**: Opens at **http://localhost:8501**  
+**Gradio**: Opens at **http://localhost:7860**
 
 ## 📚 Documentation
 
@@ -37,7 +42,7 @@ Then open: **http://localhost:7860**
 ✅ **YOUR Own Model** - Fine-tune on your data (NOT an agent!)  
 ✅ **RAG System** - Vector database for accurate retrieval  
 ✅ **Conversation Memory** - Remembers chat history  
-✅ **Beautiful UI** - Gradio web interface  
+✅ **Beautiful UI** - Streamlit or Gradio web interface  
 ✅ **M3 Optimized** - Fast on Apple Silicon  
 
 ## 🎓 What You'll Learn
@@ -72,7 +77,9 @@ Check these in order:
 ./setup.sh
 ```
 
-Then follow the prompts!
+Then choose your UI:
+- **Streamlit** (recommended): `./start_streamlit.sh`
+- **Gradio** (alternative): `python app.py`
 
 ---
 

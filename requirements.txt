@@ -19,6 +19,7 @@ lxml>=4.9.3
 
 # UI and API
 gradio>=4.7.0
+streamlit>=1.28.0
 flask>=3.0.0
 
 # Utilities
