@@ -72,22 +72,30 @@ class EnhancedVectorDBManager:
     
     def load_documents(self) -> List[Dict]:
         """Load enhanced crawled documents"""
-        doc_file = DATA_DIR / 'rackspace_knowledge.json'
+        # Try enhanced file first, then fall back to original
+        doc_file = DATA_DIR / 'rackspace_knowledge_enhanced.json'
+        if not doc_file.exists():
+            doc_file = DATA_DIR / 'rackspace_knowledge_clean.json'
+        if not doc_file.exists():
+            doc_file = DATA_DIR / 'rackspace_knowledge.json'
         
         if not doc_file.exists():
             print(f"❌ Document file not found: {doc_file}")
-            print("⚠️  Please run enhanced_data_collection.py first!")
+            print("⚠️  Please run the data integration script first!")
             return []
         
         with open(doc_file, 'r', encoding='utf-8') as f:
             documents = json.load(f)
         
-        print(f"📄 Loaded {len(documents)} documents")
+        print(f"📄 Loaded {len(documents)} documents from {doc_file.name}")
         return documents
     
     def load_training_data(self) -> List[Dict]:
         """Load training Q&A pairs"""
-        qa_file = DATA_DIR / 'training_qa_pairs.json'
+        # Try enhanced file first, then fall back to original
+        qa_file = DATA_DIR / 'training_qa_pairs_enhanced.json'
+        if not qa_file.exists():
+            qa_file = DATA_DIR / 'training_qa_pairs.json'
         
         if not qa_file.exists():
             print(f"⚠️  Training Q&A file not found: {qa_file}")
@@ -96,7 +104,7 @@ class EnhancedVectorDBManager:
         with open(qa_file, 'r', encoding='utf-8') as f:
             qa_pairs = json.load(f)
         
-        print(f"📚 Loaded {len(qa_pairs)} training Q&A pairs")
+        print(f"📚 Loaded {len(qa_pairs)} training Q&A pairs from {qa_file.name}")
         return qa_pairs
     
     def build_database(self):
