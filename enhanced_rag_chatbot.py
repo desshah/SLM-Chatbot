@@ -352,9 +352,77 @@ Answer using ONLY the information above:
         
         return response
     
+    def generate_summary_with_citations(self, query: str, context: str, sources: List[Dict]) -> str:
+        """
+        SUMMARIZATION MODE — Uses LLM to generate concise summaries with citations
+        
+        Generate a natural, concise summary from the context and add inline citations.
+        
+        Rules:
+        - Use LLM to synthesize information from multiple sources
+        - Generate 2-4 sentence summaries (concise and readable)
+        - Add inline citations like [Source: URL] after key facts
+        - Avoid marketing fluff - focus on factual information
+        - If context insufficient: acknowledge limitations
+        """
+        
+        # Build a specialized prompt for summarization
+        prompt = f"""<|system|>
+You are a helpful assistant that provides concise summaries with citations. 
+Summarize the answer to the question in 2-4 clear sentences using the Context below.
+Focus on factual, technical details. Avoid marketing language.
+After each key fact, add a citation: [Source: doc1], [Source: doc2], etc.
+<|user|>
+Context:
+{context[:1500]}
+
+Question: {query}
+
+Provide a concise 2-4 sentence summary with inline citations:
+<|assistant|>
+"""
+        
+        # Generate summary using LLM
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=200,  # Allow longer for citations
+                temperature=0.4,  # Higher for more natural language
+                do_sample=True,
+                top_p=0.9,
+                repetition_penalty=1.3,
+                no_repeat_ngram_size=3,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
+            )
+        
+        # Decode response
+        summary = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Extract only assistant's response
+        if "<|assistant|>" in summary:
+            summary = summary.split("<|assistant|>")[-1].strip()
+        
+        # Clean up
+        summary = self.clean_response(summary)
+        
+        # Add actual source URLs at the end
+        if sources and summary:
+            summary += "\n\n**Referenced Sources:**\n"
+            for idx, source in enumerate(sources[:3], 1):
+                url = source.get('url', '')
+                title = source.get('title', 'Document')
+                if url:
+                    summary += f"• [{title}]({url})\n"
+        
+        return summary
+    
     def extract_answer_from_context(self, query: str, context: str, sources: List[Dict]) -> str:
         """
-        STRICT RETRIEVAL MODE — NO LLM GENERATION
+        EXTRACTION MODE (STRICT RETRIEVAL) — NO LLM GENERATION
         
         Extract answer directly from context using EXACT or NEAR-EXACT wording.
         Do NOT generate, infer, summarize beyond what context states.
@@ -542,9 +610,21 @@ Answer using ONLY the information above:
         
         return answer
     
-    def chat(self, user_message: str) -> str:
-        """Main chat interface with FULLY EXTRACTIVE approach - NO LLM GENERATION"""
+    def chat(self, user_message: str, mode: str = "extract") -> str:
+        """
+        Main chat interface with DUAL MODE support
+        
+        Args:
+            user_message: The user's question
+            mode: "extract" (default) or "summarize"
+                - "extract": Returns exact text from documents (STRICT RETRIEVAL)
+                - "summarize": Uses LLM to generate concise summaries with citations
+        
+        Returns:
+            Response string based on selected mode
+        """
         print(f"\n📝 Processing: {user_message}")
+        print(f"🎯 Mode: {mode.upper()}")
         
         # Detect if user is asking for a list of services
         list_keywords = ['list', 'services', 'offer', 'provide', 'what does rackspace',
@@ -558,7 +638,7 @@ Answer using ONLY the information above:
         if not context:
             return "I couldn't find relevant information to answer your question. Please try rephrasing or ask about Rackspace's cloud services, security, migration, or professional services."
         
-        # For service list queries, use service extractor
+        # For service list queries, use service extractor (works for both modes)
         if is_list_query:
             print("🔍 Using extractive approach for service list")
             extractive_response = self.extract_services_list(context, sources)
@@ -572,19 +652,23 @@ Answer using ONLY the information above:
                     self.conversation_history = self.conversation_history[-5:]
                 return extractive_response
         
-        # For ALL other queries, use EXTRACTIVE approach (NO LLM)
-        print("🔍 Using extractive approach - returning document excerpts")
-        extractive_response = self.extract_answer_from_context(user_message, context, sources)
+        # Route to appropriate method based on mode
+        if mode == "summarize":
+            print("📝 Using SUMMARIZATION mode - LLM generates concise summary with citations")
+            response = self.generate_summary_with_citations(user_message, context, sources)
+        else:  # mode == "extract" (default)
+            print("🔍 Using EXTRACTION mode - returning exact document excerpts")
+            response = self.extract_answer_from_context(user_message, context, sources)
         
         # Update history
         self.conversation_history.append({
             'user': user_message,
-            'assistant': extractive_response
+            'assistant': response
         })
         if len(self.conversation_history) > 5:
             self.conversation_history = self.conversation_history[-5:]
         
-        return extractive_response
+        return response
     
     def reset_conversation(self):
         """Reset conversation history"""
@@ -603,10 +687,16 @@ def get_chatbot():
     return _chatbot_instance
 
 
-def chat(message: str) -> str:
-    """Simple chat interface"""
+def chat(message: str, mode: str = "extract") -> str:
+    """
+    Simple chat interface
+    
+    Args:
+        message: User's question
+        mode: "extract" (default) or "summarize"
+    """
     chatbot = get_chatbot()
-    return chatbot.chat(message)
+    return chatbot.chat(message, mode=mode)
 
 
 def reset():

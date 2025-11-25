@@ -49,6 +49,8 @@ def initialize_session_state():
         st.session_state.messages = []
     if "chatbot" not in st.session_state:
         st.session_state.chatbot = None
+    if "mode" not in st.session_state:
+        st.session_state.mode = "extract"  # Default to extraction mode
 
 
 def main():
@@ -133,6 +135,32 @@ def main():
         </div>
     """, unsafe_allow_html=True)
     
+    # Mode selection (above chat)
+    st.markdown("### Answer Mode")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📄 Extraction Mode", 
+                    type="primary" if st.session_state.mode == "extract" else "secondary",
+                    use_container_width=True):
+            st.session_state.mode = "extract"
+            st.rerun()
+    
+    with col2:
+        if st.button("📝 Summarization Mode", 
+                    type="primary" if st.session_state.mode == "summarize" else "secondary",
+                    use_container_width=True):
+            st.session_state.mode = "summarize"
+            st.rerun()
+    
+    # Mode description
+    if st.session_state.mode == "extract":
+        st.info("📄 **Extraction Mode**: Returns exact text from documents (100% accurate, verbose)")
+    else:
+        st.info("📝 **Summarization Mode**: AI generates concise summaries with citations (95% accurate, readable)")
+    
+    st.markdown("---")
+    
     # Load chatbot (cached)
     if st.session_state.chatbot is None:
         with st.spinner("🤖 Initializing chatbot..."):
@@ -154,11 +182,12 @@ def main():
         with st.chat_message("user", avatar="🧑‍💼"):
             st.markdown(prompt)
         
-        # Get bot response
+        # Get bot response with selected mode
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Thinking..."):
                 try:
-                    response = st.session_state.chatbot.chat(prompt)
+                    # Pass the mode parameter to the chat method
+                    response = st.session_state.chatbot.chat(prompt, mode=st.session_state.mode)
                     st.markdown(response)
                     st.session_state.messages.append({"role": "assistant", "content": response})
                 except Exception as e:
