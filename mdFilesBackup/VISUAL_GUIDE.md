@@ -1,0 +1,986 @@
+# 📊 Visual Guide - How YOUR OWN Model is Built# 🎨 Visual Guide - Rackspace Knowledge Chatbot
+
+
+
+## 🎯 Core Concept: You Train Your Own Model (NO AGENTS!)## 📖 Table of Contents
+
+1. [Quick Overview](#quick-overview)
+
+```2. [Setup Process](#setup-process)
+
+┌─────────────────────────────────────────────────────────────┐3. [How It Works](#how-it-works)
+
+│                                                             │4. [Usage Examples](#usage-examples)
+
+│          ❌ NOT Using External AI Agents                    │5. [Architecture Diagram](#architecture-diagram)
+
+│          ✅ YOU Build Your Own Trained Model                │
+
+│                                                             │---
+
+└─────────────────────────────────────────────────────────────┘
+
+```## Quick Overview
+
+
+
+## 🕷️ Step 1: BFS Web Crawling - Collecting Training Data```
+
+╔════════════════════════════════════════════════════════════════╗
+
+### Breadth-First Search (BFS) Crawling Strategy║                RACKSPACE KNOWLEDGE CHATBOT                     ║
+
+║                                                                 ║
+
+```║  🤖 Fine-tuned LLM + 📚 RAG System + 💬 Conversation Memory   ║
+
+Starting URLs:╚════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────┐
+
+│ • https://www.rackspace.com/                           │What you get:
+
+│ • https://www.rackspace.com/blog                       │✅ Intelligent chatbot trained on Rackspace knowledge
+
+│ • https://www.rackspace.com/resources                  │✅ Accurate answers using RAG (retrieval-augmented generation)
+
+│ • https://docs.rackspace.com/                          │✅ Remembers conversation history
+
+│ • https://docs-ospc.rackspace.com/                     │✅ Beautiful web interface
+
+│ • https://spot.rackspace.com/                          │✅ Optimized for Apple M3 Mac
+
+│ • https://developer.rackspace.com/                     │```
+
+└────────────────────────────────────────────────────────┘
+
+                        │---
+
+                        ▼
+
+┌──────────────────────────────────────────────────────────────┐## Setup Process
+
+│                    DEPTH 0 (Initial URLs)                     │
+
+│  Process each starting URL, extract content                   │```
+
+│  Collect all links found on these pages                       │Step 1: SETUP
+
+└───────────────────────┬──────────────────────────────────────┘┌─────────────────────────────────────────┐
+
+                        ││  ./setup.sh                             │
+
+                        ▼│                                         │
+
+┌──────────────────────────────────────────────────────────────┐│  ✓ Create virtual environment          │
+
+│                    DEPTH 1 (First Level)                      ││  ✓ Install dependencies                │
+
+│  rackspace.com/cloud                                          ││  ✓ Create directories                  │
+
+│  rackspace.com/managed-services                               ││                                         │
+
+│  rackspace.com/security                                       ││  Time: 5-10 minutes                    │
+
+│  docs.rackspace.com/cloud-servers                             │└─────────────────────────────────────────┘
+
+│  docs.rackspace.com/cloud-databases                           │                ↓
+
+│  spot.rackspace.com/learning-center                           │Step 2: BUILD PIPELINE
+
+│  ... (follow ALL relevant links)                              │┌─────────────────────────────────────────┐
+
+└───────────────────────┬──────────────────────────────────────┘│  ./build_pipeline.sh                    │
+
+                        ││                                         │
+
+                        ▼│  1. Data Collection                     │
+
+┌──────────────────────────────────────────────────────────────┐│     python data_collection.py           │
+
+│                    DEPTH 2 (Second Level)                     ││     ✓ Scrape Rackspace websites         │
+
+│  rackspace.com/cloud/aws                                      ││     ✓ Add curated knowledge             │
+
+│  rackspace.com/cloud/azure                                    ││     → data/rackspace_knowledge.json     │
+
+│  rackspace.com/cloud/google-cloud                             ││                                         │
+
+│  rackspace.com/managed-services/kubernetes                    ││  2. Vector Database                     │
+
+│  docs.rackspace.com/cloud-servers/quickstart                  ││     python vector_db.py                 │
+
+│  docs.rackspace.com/cloud-databases/mysql                     ││     ✓ Generate embeddings               │
+
+│  ... (follow ALL relevant links)                              ││     ✓ Build ChromaDB                    │
+
+└───────────────────────┬──────────────────────────────────────┘│     → vector_db/chroma.sqlite3          │
+
+                        ││                                         │
+
+                        ▼│  3. Prepare Dataset                     │
+
+┌──────────────────────────────────────────────────────────────┐│     python prepare_dataset.py           │
+
+│                    DEPTH 3 (Third Level)                      ││     ✓ Create Q&A pairs                  │
+
+│  rackspace.com/cloud/aws/compute                              ││     ✓ Format for training               │
+
+│  rackspace.com/cloud/aws/storage                              ││     → data/training_data.jsonl          │
+
+│  rackspace.com/managed-services/kubernetes/eks                ││                                         │
+
+│  docs.rackspace.com/cloud-servers/quickstart/create           ││  4. Fine-tune Model (optional)          │
+
+│  ... (collect comprehensive data)                             ││     python fine_tune.py                 │
+
+└───────────────────────┬──────────────────────────────────────┘│     ✓ Train with LoRA                   │
+
+                        ││     ✓ Save adapter weights              │
+
+                        ▼│     → models/rackspace_finetuned/       │
+
+            ┌──────────────────────┐│                                         │
+
+            │  200-500+ Documents  ││  Time: 10-15 min (or 45-75 with tune)  │
+
+            │  Comprehensive Data  │└─────────────────────────────────────────┘
+
+            └──────────────────────┘                ↓
+
+```Step 3: LAUNCH
+
+┌─────────────────────────────────────────┐
+
+### What Gets Collected?│  python app.py                          │
+
+│                                         │
+
+```│  ✓ Initialize RAG chatbot               │
+
+For EACH page visited:│  ✓ Load model                           │
+
+┌─────────────────────────────────────────────────────┐│  ✓ Start Gradio UI                      │
+
+│  ✓ URL and title                                    ││  → http://localhost:7860                │
+
+│  ✓ Main content (cleaned text)                      ││                                         │
+
+│  ✓ Metadata (description, tags)                     ││  Time: Instant!                         │
+
+│  ✓ Remove navigation, ads, footers                  │└─────────────────────────────────────────┘
+
+│  ✓ Extract only meaningful content                  │```
+
+│  ✓ Track depth and source                           │
+
+└─────────────────────────────────────────────────────┘---
+
+                    │
+
+                    ▼## How It Works
+
+        data/rackspace_knowledge.json
+
+        (Comprehensive training dataset)### User Query Flow
+
+```
+
+```
+
+### BFS Queue Visualization┌─────────────────────────────────────────────────────────────┐
+
+│                    USER ASKS QUESTION                       │
+
+```│              "What is Rackspace mission?"                   │
+
+Initial Queue:└──────────────────────┬──────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────┐                       │
+
+│ (url1, depth=0) → (url2, depth=0) → (url3, depth=0) │                       ▼
+
+└──────────────────────────────────────────────────────┘         ┌─────────────────────────────┐
+
+         │   RAG Chatbot Controller    │
+
+Process url1 (depth=0):         │  (Manages conversation)     │
+
+  ├─ Extract content ✓         └─────────────┬───────────────┘
+
+  ├─ Find 10 new links                       │
+
+  └─ Add to queue with depth=1        ┌──────────────┴──────────────┐
+
+        │                             │
+
+Queue Now:        ▼                             ▼
+
+┌────────────────────────────────────────────────────────────┐┌──────────────┐            ┌──────────────────┐
+
+│ (url2, 0) → (url3, 0) → (link1, 1) → (link2, 1) → ... ││ Vector DB    │            │ Conversation     │
+
+└────────────────────────────────────────────────────────────┘│ (ChromaDB)   │            │ History Manager  │
+
+│              │            │                  │
+
+Process url2 (depth=0):│ Retrieve     │            │ Get previous     │
+
+  ├─ Extract content ✓│ relevant     │            │ 5 turns          │
+
+  ├─ Find 8 new links│ documents    │            │                  │
+
+  └─ Add to queue with depth=1└──────┬───────┘            └────────┬─────────┘
+
+       │                             │
+
+Continue until queue is empty or limits reached...       │  Top-K docs                 │  History
+
+```       │                             │
+
+       └──────────────┬──────────────┘
+
+## 🧠 Step 2: Fine-Tuning - Creating YOUR OWN Model                      │
+
+                      ▼
+
+### The Training Process         ┌─────────────────────────────┐
+
+         │    Build Prompt:            │
+
+```         │                             │
+
+┌─────────────────────────────────────────────────────────────┐         │  [System Instructions]      │
+
+│              TinyLlama-1.1B (Base Model)                     │         │  [Retrieved Context]        │
+
+│           General language understanding                      │         │  [Conversation History]     │
+
+│           NO Rackspace knowledge yet                          │         │  [User Question]            │
+
+└───────────────────────┬─────────────────────────────────────┘         └─────────────┬───────────────┘
+
+                        │                       │
+
+                        │ + Your Collected Data (200-500 docs)                       ▼
+
+                        │ + Q&A Pairs Generated         ┌─────────────────────────────┐
+
+                        │ + LoRA Fine-tuning         │   Fine-tuned LLM            │
+
+                        │         │   (TinyLlama + LoRA)        │
+
+                        ▼         │                             │
+
+┌─────────────────────────────────────────────────────────────┐         │   Generate response         │
+
+│                  Training Process                            │         └─────────────┬───────────────┘
+
+│                                                              │                       │
+
+│  Epoch 1: Model reads ALL Rackspace data                    │                       ▼
+
+│           Learns patterns, facts, terminology                │         ┌─────────────────────────────┐
+
+│           Adjusts weights to encode knowledge                │         │   Save to History           │
+
+│           Loss: 2.5 → 1.8                                    │         │   (User Q + Bot Answer)     │
+
+│                                                              │         └─────────────┬───────────────┘
+
+│  Epoch 2: Model reinforces learning                          │                       │
+
+│           Better understanding of concepts                   │                       ▼
+
+│           Improved response generation                       │         ┌─────────────────────────────┐
+
+│           Loss: 1.8 → 1.2                                    │         │   Display in UI             │
+
+│                                                              │         │   Beautiful Gradio Chat     │
+
+│  Epoch 3: Model masters the domain                           │         └─────────────────────────────┘
+
+│           Expert-level Rackspace knowledge                   │```
+
+│           Natural, accurate responses                        │
+
+│           Loss: 1.2 → 0.9                                    │---
+
+└───────────────────────┬─────────────────────────────────────┘
+
+                        │## Usage Examples
+
+                        ▼
+
+┌─────────────────────────────────────────────────────────────┐### Example 1: Simple Question
+
+│           YOUR OWN Rackspace Expert Model!                   │
+
+│                                                              │```
+
+│  ✓ Knows Rackspace services, products, history              │┌──────────────────────────────────────────────────┐
+
+│  ✓ Understands cloud technologies                           ││ USER:  What is Rackspace?                        │
+
+│  ✓ Can explain concepts naturally                           │└──────────────────────────────────────────────────┘
+
+│  ✓ Specialized neural network weights                       │         ↓ [Retrieves docs about Rackspace]
+
+│  ✓ NO external agents or APIs needed                        │┌──────────────────────────────────────────────────┐
+
+│                                                              ││ BOT:   Rackspace Technology is a leading         │
+
+│  Saved: models/rackspace_finetuned/                          ││        provider of end-to-end multicloud         │
+
+└─────────────────────────────────────────────────────────────┘│        solutions. Founded in 1998 and            │
+
+```│        headquartered in San Antonio, Texas...    │
+
+└──────────────────────────────────────────────────┘
+
+### What is LoRA? (Parameter-Efficient Fine-Tuning)         ↓ [Saves to history]
+
+```
+
+```
+
+Instead of updating ALL 1.1 billion parameters:### Example 2: Follow-up Question
+
+
+
+Full Fine-tuning:          LoRA Fine-tuning:```
+
+┌──────────────┐          ┌──────────────┐┌──────────────────────────────────────────────────┐
+
+│ 1.1B params  │          │ 1.1B params  ││ USER:  What is Rackspace?                        │
+
+│ ALL updated  │          │ FROZEN ✓     │└──────────────────────────────────────────────────┘
+
+│ ~2GB storage │          └──────────────┘         ↓
+
+│ 8-12 hours   │                  │┌──────────────────────────────────────────────────┐
+
+└──────────────┘                  │ + Small adapters│ BOT:   [Provides overview of Rackspace]          │
+
+                                  ▼└──────────────────────────────────────────────────┘
+
+                          ┌──────────────┐         ↓ [Saves: Q1 + A1]
+
+                          │ ~10M params  │┌──────────────────────────────────────────────────┐
+
+                          │ Trained ✓    ││ USER:  What's their mission?                     │
+
+                          │ ~10MB only!  │└──────────────────────────────────────────────────┘
+
+                          │ 30-60 min    │         ↓ [Uses history + retrieves mission docs]
+
+                          └──────────────┘┌──────────────────────────────────────────────────┐
+
+│ BOT:   Rackspace's mission is to design, build,  │
+
+Benefits:│        and operate customers' multi-cloud        │
+
+• Faster training (30-60 min vs hours)│        environments with Fanatical Experience... │
+
+• Less memory (works on 16GB Mac)└──────────────────────────────────────────────────┘
+
+• Smaller storage (10MB vs 2GB)         ↓ [Saves: Q1+A1, Q2+A2]
+
+• Preserves base knowledge```
+
+• Adds specialized expertise
+
+```### Example 3: Conversation Memory
+
+
+
+## 🔍 Step 3: RAG (Retrieval-Augmented Generation)```
+
+┌──────────────────────────────────────────────────┐
+
+### How RAG Enhances Your Model│ USER:  Tell me about Rackspace services          │
+
+└──────────────────────────────────────────────────┘
+
+```         ↓
+
+User Question: "What is Rackspace?"┌──────────────────────────────────────────────────┐
+
+        ││ BOT:   [Lists Rackspace services]                │
+
+        ▼└──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────┐         ↓
+
+│  Vector Database (ChromaDB)                          │┌──────────────────────────────────────────────────┐
+
+│  Contains: All 200-500+ documents as embeddings      ││ USER:  What about their partners?                │
+
+│                                                      │└──────────────────────────────────────────────────┘
+
+│  Semantic Search:                                    │         ↓
+
+│  "What is Rackspace?" → Find most relevant chunks    │┌──────────────────────────────────────────────────┐
+
+└────────────────┬─────────────────────────────────────┘│ BOT:   [Explains cloud partnerships]             │
+
+                 │└──────────────────────────────────────────────────┘
+
+                 ▼         ↓
+
+        Top 5 Most Relevant Documents:┌──────────────────────────────────────────────────┐
+
+        ┌───────────────────────────┐│ USER:  What did I ask first?                     │
+
+        │ 1. About Rackspace (98%)  │└──────────────────────────────────────────────────┘
+
+        │ 2. Company Mission (95%)  │         ↓ [Retrieves from history]
+
+        │ 3. Services Overview (92%)│┌──────────────────────────────────────────────────┐
+
+        │ 4. History (88%)          ││ BOT:   Your first question was:                  │
+
+        │ 5. Partnerships (85%)     ││        "Tell me about Rackspace services"        │
+
+        └───────────┬───────────────┘└──────────────────────────────────────────────────┘
+
+                    │```
+
+                    ▼
+
+        ┌───────────────────────────────────────┐---
+
+        │  YOUR Fine-tuned Model                │
+
+        │                                       │## Architecture Diagram
+
+        │  Input:                               │
+
+        │  • User question                      │```
+
+        │  • Retrieved context (Top 5 docs)     │╔══════════════════════════════════════════════════════════════════╗
+
+        │  • Conversation history               │║                       SYSTEM ARCHITECTURE                         ║
+
+        │                                       │╚══════════════════════════════════════════════════════════════════╝
+
+        │  Process:                             │
+
+        │  • Understands question (fine-tuned)  │┌────────────────────────────────────────────────────────────────┐
+
+        │  • Uses retrieved context             ││                         USER INTERFACE                         │
+
+        │  • Applies learned knowledge          ││                   Gradio Web Application                       │
+
+        │  • Generates natural response         ││  ┌──────────────────────────────────────────────────────────┐ │
+
+        └───────────┬───────────────────────────┘│  │                      Chat Window                         │ │
+
+                    ││  │  👤 User: What is Rackspace?                            │ │
+
+                    ▼│  │  🤖 Bot: [Response with context]                        │ │
+
+        Response: "Rackspace Technology is a│  │                                                          │ │
+
+        leading provider of end-to-end multicloud│  │  [Example Questions] [Clear] [History Display]          │ │
+
+        solutions. Founded in 1998..."│  └──────────────────────────────────────────────────────────┘ │
+
+```└───────────────────────────┬────────────────────────────────────┘
+
+                            │
+
+## 💬 Step 4: Conversation History                            ▼
+
+┌────────────────────────────────────────────────────────────────┐
+
+### How the Chatbot Remembers│                    RAG CHATBOT CONTROLLER                      │
+
+│  ┌──────────────────────────────────────────────────────────┐ │
+
+```│  │  • Receives user query                                   │ │
+
+Conversation Flow:│  │  • Manages conversation state                            │ │
+
+│  │  • Coordinates retrieval + generation                    │ │
+
+Turn 1:│  │  • Maintains conversation history (5 turns)              │ │
+
+User: "What is Rackspace?"│  └──────────────────────────────────────────────────────────┘ │
+
+Bot:  "Rackspace Technology is a leading..."└─────────────┬──────────────────────────────────┬──────────────┘
+
+      └─► Stored in history              │                                  │
+
+              ▼                                  ▼
+
+Turn 2:┌──────────────────────────┐      ┌──────────────────────────────┐
+
+User: "What's their mission?"│   RETRIEVAL SYSTEM       │      │   GENERATION SYSTEM          │
+
+      ↓│   (RAG Component)        │      │   (Fine-tuned LLM)           │
+
+   History Context:│ ┌──────────────────────┐ │      │ ┌──────────────────────────┐ │
+
+   ┌─────────────────────────────┐│ │  Vector Database     │ │      │ │  TinyLlama-1.1B         │ │
+
+   │ Previous conversation:      ││ │  (ChromaDB)          │ │      │ │  + LoRA Adapters        │ │
+
+   │ User: What is Rackspace?    ││ │                      │ │      │ │                          │ │
+
+   │ Bot: Rackspace Technology...││ │  • Semantic search   │ │      │ │  • Context-aware gen    │ │
+
+   └─────────────────────────────┘│ │  • Embedding lookup  │ │      │ │  • History integration  │ │
+
+      ↓│ │  • Top-K retrieval   │ │      │ │  • Instruction follow   │ │
+
+Bot:  "Rackspace's mission is to design,│ └──────────────────────┘ │      │ └──────────────────────────┘ │
+
+       build, and operate customers'│                          │      │                              │
+
+       multi-cloud environments..."│  Embedding Model:        │      │  Training: LoRA/QLoRA        │
+
+      └─► Added to history│  all-MiniLM-L6-v2        │      │  Device: MPS (Apple M3)      │
+
+│  Dimensions: 384         │      │  Inference: ~1-2 sec         │
+
+Turn 3:└──────────────────────────┘      └──────────────────────────────┘
+
+User: "What did I ask first?"              │                                  │
+
+      ↓              └──────────────┬───────────────────┘
+
+   Full History:                             │
+
+   ┌─────────────────────────────┐                             ▼
+
+   │ Turn 1: What is Rackspace?  │┌────────────────────────────────────────────────────────────────┐
+
+   │ Turn 2: What's their mission││                         DATA LAYER                             │
+
+   └─────────────────────────────┘│                                                                │
+
+      ↓│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+
+Bot:  "Your first question was:│  │   Raw Data   │  │  Vector DB   │  │  Model Weights   │   │
+
+       What is Rackspace?"│  │              │  │              │  │                  │   │
+
+```│  │  • JSON docs │  │  • Embeddings│  │  • Base model    │   │
+
+│  │  • Text data │  │  • Metadata  │  │  • LoRA adapters │   │
+
+## 🏗️ Complete Architecture│  │  • Training  │  │  • Chunks    │  │  • Tokenizer     │   │
+
+│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
+
+```└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+
+│                    Gradio Web Interface                     │╔══════════════════════════════════════════════════════════════════╗
+
+│              (Beautiful chat UI at localhost:7860)          │║                        DATA FLOW                                  ║
+
+└─────────────────────────┬──────────────────────────────────┘╚══════════════════════════════════════════════════════════════════╝
+
+                          │
+
+                          ▼User Query → Controller → Retrieval (Vector DB) → Context
+
+┌────────────────────────────────────────────────────────────┐                 ↓                                    ↓
+
+│                RAG Chatbot Controller                       │           History Manager                    Combine with History
+
+│  • Manages conversation history                            │                 ↓                                    ↓
+
+│  • Coordinates retrieval and generation                     │           Previous Turns                      Build Prompt
+
+│  • Handles context assembly                                │                 ↓                                    ↓
+
+└──────┬─────────────────────────────────────────┬───────────┘                 └────────→ LLM Generator ←──────────┘
+
+       │                                         │                                  ↓
+
+       ▼                                         ▼                            Response
+
+┌──────────────────────┐            ┌────────────────────────┐                                  ↓
+
+│  Vector Database     │            │  YOUR Fine-tuned Model │                          Update History
+
+│  (ChromaDB)          │            │  (TinyLlama + LoRA)    │                                  ↓
+
+│                      │            │                        │                           Display in UI
+
+│  • 200-500 docs      │            │  • Trained by YOU      │```
+
+│  • Semantic search   │            │  • Rackspace expert    │
+
+│  • Top-K retrieval   │            │  • 1.1B + 10M params   │---
+
+└──────────────────────┘            │  • NO agents!          │
+
+                                    └────────────────────────┘## Component Details
+
+```
+
+### 1. Data Collection
+
+## 📈 Performance Characteristics```
+
+Sources → Scraper → Parser → JSON
+
+### Training YOUR Model   ↓         ↓         ↓        ↓
+
+Websites  BeautifulSoup  Clean  Store
+
+```Docs      Requests     Format  Organize
+
+Data Collection (BFS Crawl):```
+
+┌────────────────────────────────────────┐
+
+│ Time:     10-30 minutes               │### 2. Vector Database
+
+│ Output:   200-500+ documents          │```
+
+│ Quality:  Comprehensive coverage      │Documents → Chunking → Embeddings → ChromaDB
+
+│ Depth:    3 levels of links           │    ↓          ↓           ↓           ↓
+
+│ Domains:  6+ Rackspace domains        │  JSON    512 tokens  384-dim    SQLite
+
+└────────────────────────────────────────┘  Text    Overlap    Vectors    + Index
+
+```
+
+Fine-tuning Process:
+
+┌────────────────────────────────────────┐### 3. Fine-tuning
+
+│ Time:     30-60 minutes (M3 Mac)      │```
+
+│ Memory:   ~6-8GB RAM                  │Dataset → Tokenize → LoRA → Train → Save
+
+│ Storage:  ~10MB (LoRA adapters)       │   ↓         ↓         ↓       ↓       ↓
+
+│ Epochs:   3 passes through data       │ Q&A     Max 512    r=16    3 epochs  10MB
+
+│ Result:   YOUR Rackspace expert model │Pairs    tokens   dropout   M3 MPS   adapters
+
+└────────────────────────────────────────┘```
+
+
+
+Inference (After Training):### 4. RAG Pipeline
+
+┌────────────────────────────────────────┐```
+
+│ Response: 1-2 seconds per query       │Query → Embed → Search → Retrieve → Context
+
+│ Memory:   ~4-6GB RAM                  │  ↓       ↓       ↓         ↓          ↓
+
+│ Quality:  Expert-level answers        │Text   Vector   Top-K    Chunks     Prompt
+
+│ Offline:  No internet needed!         │Input  384d     k=5      Docs       Build
+
+└────────────────────────────────────────┘```
+
+```
+
+### 5. Generation
+
+## 🎯 Why This is YOUR OWN Model```
+
+Prompt → Tokenize → Model → Decode → Response
+
+```   ↓        ↓         ↓        ↓         ↓
+
+❌ What This is NOT:Context  Input    Generate  Output    Text
+
+├─ NOT using ChatGPT API+History  IDs     Tokens     IDs      Answer
+
+├─ NOT using Claude API```
+
+├─ NOT using any agent framework
+
+├─ NOT relying on external services---
+
+└─ NOT just prompting existing models
+
+## Performance Metrics
+
+✅ What This IS:
+
+├─ YOUR collected training data (BFS crawled)```
+
+├─ YOUR fine-tuned neural network┌─────────────────────────────────────────────┐
+
+├─ YOUR model weights stored locally│           PERFORMANCE STATS                 │
+
+├─ YOUR deployment on your machine├─────────────────────────────────────────────┤
+
+└─ YOUR complete control over behavior│ Response Time:      1-2 seconds             │
+
+│ Model Size:         ~2 GB (base + adapters) │
+
+The Model Literally Learns:│ Memory Usage:       4-6 GB RAM              │
+
+• Neural connections strengthen for Rackspace facts│ Inference Device:   Apple M3 MPS            │
+
+• Weights encode relationships and concepts│ Embedding Time:     ~50ms per query         │
+
+• Parameters store compressed knowledge│ Retrieval Time:     ~100ms                  │
+
+• No external lookups during inference│ Generation Time:    ~1-1.5s                 │
+
+• Pure neural network inference│ Total Latency:      ~1.5-2s                 │
+
+```└─────────────────────────────────────────────┘
+
+```
+
+## 🚀 End-to-End Flow
+
+---
+
+```
+
+1. BFS Data Collection (10-30 min)## File Structure
+
+   └─► 200-500+ Rackspace documents from all domains
+
+```
+
+2. Vector Database (2-3 min)📦 chatbot-rackspace/
+
+   └─► Searchable knowledge base with embeddings│
+
+├── 🎯 Entry Points
+
+3. Dataset Prep (1 min)│   ├── app.py                    [Launch UI]
+
+   └─► Training-ready Q&A pairs│   ├── setup.sh                  [Setup script]
+
+│   ├── build_pipeline.sh         [Build script]
+
+4. Fine-tuning (30-60 min)│   └── start_chatbot.sh          [Quick start]
+
+   └─► YOUR Rackspace expert model ⭐│
+
+├── 🤖 Core AI
+
+5. Launch & Use (instant)│   ├── rag_chatbot.py            [RAG controller]
+
+   └─► Chat with YOUR model!│   ├── fine_tune.py              [Model training]
+
+│   └── vector_db.py              [Vector DB manager]
+
+Total: ~1-2 hours to build YOUR OWN expert chatbot│
+
+```├── 📊 Data Processing
+
+│   ├── data_collection.py        [Scraper]
+
+## 🕷️ BFS Crawling in Action│   └── prepare_dataset.py        [Dataset builder]
+
+│
+
+### Example Crawl Path├── ⚙️ Configuration
+
+│   ├── config.py                 [Settings]
+
+```│   └── requirements.txt          [Dependencies]
+
+Start: https://www.rackspace.com/│
+
+  │├── 📖 Documentation
+
+  ├─► /cloud                    [DEPTH 1]│   ├── README.md                 [Main docs]
+
+  │    ├─► /cloud/aws           [DEPTH 2]│   ├── QUICKSTART.md             [Quick guide]
+
+  │    │    ├─► /cloud/aws/compute        [DEPTH 3]│   ├── SUMMARY.md                [Overview]
+
+  │    │    └─► /cloud/aws/storage        [DEPTH 3]│   ├── PROJECT_STRUCTURE.md      [Architecture]
+
+  │    ├─► /cloud/azure         [DEPTH 2]│   └── VISUAL_GUIDE.md           [This file]
+
+  │    └─► /cloud/google-cloud  [DEPTH 2]│
+
+  │└── 🧪 Testing
+
+  ├─► /managed-services         [DEPTH 1]    └── test_system.py            [System tests]
+
+  │    ├─► /managed-services/kubernetes   [DEPTH 2]```
+
+  │    │    └─► /managed-services/kubernetes/eks  [DEPTH 3]
+
+  │    └─► /managed-services/databases    [DEPTH 2]---
+
+  │
+
+  └─► /security                 [DEPTH 1]## Quick Commands Reference
+
+       ├─► /security/compliance [DEPTH 2]
+
+       └─► /security/monitoring [DEPTH 2]```bash
+
+# Complete Setup
+
+Start: https://docs.rackspace.com/./setup.sh                       # Install everything
+
+  │./build_pipeline.sh              # Build all components
+
+  ├─► /cloud-servers            [DEPTH 1]python app.py                    # Launch chatbot
+
+  │    ├─► /cloud-servers/quickstart      [DEPTH 2]
+
+  │    │    └─► /cloud-servers/quickstart/create  [DEPTH 3]# Individual Steps
+
+  │    └─► /cloud-servers/api   [DEPTH 2]python data_collection.py        # Collect data
+
+  │python vector_db.py              # Build vector DB
+
+  └─► /cloud-databases          [DEPTH 1]python prepare_dataset.py        # Prepare training data
+
+       ├─► /cloud-databases/mysql         [DEPTH 2]python fine_tune.py              # Fine-tune model
+
+       └─► /cloud-databases/postgresql    [DEPTH 2]
+
+# Testing
+
+... and so on for all starting URLspython test_system.py            # Verify setup
+
+```python rag_chatbot.py            # Test RAG system
+
+python vector_db.py              # Test retrieval
+
+### Crawl Statistics Example
+
+# Quick Start (No Fine-tuning)
+
+```./setup.sh
+
+After BFS Crawl:source venv/bin/activate
+
+┌────────────────────────────────────────────┐python data_collection.py && python vector_db.py
+
+│ Total Pages Visited:        387            │python app.py
+
+│ Documents Collected:        245            │```
+
+│ Average Content Length:     2,847 chars    │
+
+│ Total Content:              697,515 chars  │---
+
+│                                            │
+
+│ Per Domain:                                │## Conversation Flow Visualization
+
+│ • www.rackspace.com:        98 pages       │
+
+│ • docs.rackspace.com:       87 pages       │```
+
+│ • spot.rackspace.com:       64 pages       │Turn 1:
+
+│ • docs-ospc.rackspace.com:  45 pages       │  User: "What is Rackspace?"
+
+│ • developer.rackspace.com:  93 pages       │    ↓ [No history yet]
+
+│                                            │  Bot: [Retrieves context] → [Generates] → "Rackspace is..."
+
+│ Per Depth:                                 │    ↓ [Saves: Q1, A1]
+
+│ • Depth 0:                  7 pages        │
+
+│ • Depth 1:                  84 pages       │Turn 2:
+
+│ • Depth 2:                  156 pages      │  User: "What's their mission?"
+
+│ • Depth 3:                  140 pages      │    ↓ [Has history: Q1, A1]
+
+└────────────────────────────────────────────┘  Bot: [Retrieves mission docs] → [Uses history] → "Their mission is..."
+
+```    ↓ [Saves: Q1, A1, Q2, A2]
+
+
+
+## 💡 Key TakeawayTurn 3:
+
+  User: "Tell me about services"
+
+**This system creates a TRUE custom model:**    ↓ [Has history: Q1, A1, Q2, A2]
+
+- The neural network weights physically change during training  Bot: [Retrieves services] → [Context-aware] → "Services include..."
+
+- Rackspace knowledge becomes embedded in the model parameters    ↓ [Saves: Q1, A1, Q2, A2, Q3, A3]
+
+- It's not retrieval or prompting - it's actual learning
+
+- You own the model, the data, and the deploymentTurn 4:
+
+- No agents, no APIs, no external dependencies  User: "What did I ask first?"
+
+    ↓ [Checks history: Q1, A1, Q2, A2, Q3, A3]
+
+**You are literally training a neural network to become a Rackspace expert!**  Bot: [Recalls Q1] → "You asked: 'What is Rackspace?'"
+
+    ↓ [Saves: ... Q3, A3, Q4, A4]
+
+### Training Visualization```
+
+
+
+```---
+
+Before Fine-tuning:
+
+┌────────────────────────────────────┐## Memory Management
+
+│ Q: "What is Rackspace?"            │
+
+│ A: "I don't have specific info..." │```
+
+└────────────────────────────────────┘Conversation History (Sliding Window):
+
+┌───────────────────────────────────────────────┐
+
+After Fine-tuning (YOUR Model):│ Turn 1: Q1 ←→ A1                              │
+
+┌────────────────────────────────────────────────────┐│ Turn 2: Q2 ←→ A2                              │
+
+│ Q: "What is Rackspace?"                            ││ Turn 3: Q3 ←→ A3      ← Max 5 turns           │
+
+│ A: "Rackspace Technology is a leading provider    ││ Turn 4: Q4 ←→ A4                              │
+
+│    of end-to-end multicloud solutions. Founded    ││ Turn 5: Q5 ←→ A5                              │
+
+│    in 1998, headquartered in San Antonio, Texas,  │└───────────────────────────────────────────────┘
+
+│    Rackspace delivers expert services across AWS, │          ↓ New turn arrives
+
+│    Azure, Google Cloud, and more..."              │┌───────────────────────────────────────────────┐
+
+└────────────────────────────────────────────────────┘│ Turn 2: Q2 ←→ A2      ← Q1, A1 dropped        │
+
+```│ Turn 3: Q3 ←→ A3                              │
+
+│ Turn 4: Q4 ←→ A4      ← Still max 5           │
+
+---│ Turn 5: Q5 ←→ A5                              │
+
+│ Turn 6: Q6 ←→ A6      ← New turn              │
+
+*Built with 100% open-source tools and YOUR data* 🚀└───────────────────────────────────────────────┘
+
+```
+
+---
+
+**Ready to build your chatbot? Start with:**
+```bash
+./setup.sh
+```
+
+**Then follow the visual flow above!** 🚀
