@@ -153,12 +153,6 @@ def main():
             st.session_state.mode = "summarize"
             st.rerun()
     
-    # Mode description
-    if st.session_state.mode == "extract":
-        st.info("📄 **Extraction Mode**: Returns exact text from documents (100% accurate, verbose)")
-    else:
-        st.info("📝 **Summarization Mode**: AI generates concise summaries with citations (95% accurate, readable)")
-    
     st.markdown("---")
     
     # Load chatbot (cached)
