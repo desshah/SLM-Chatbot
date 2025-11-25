@@ -28,19 +28,12 @@ def load_chatbot():
         if USING_ENHANCED:
             # Use enhanced chatbot (simpler interface)
             logger.info("✅ Using Enhanced RAG Chatbot")
-            st.success("🎯 Using Enhanced RAG Chatbot with Training Data Integration")
             chatbot = get_chatbot()
             return chatbot
         else:
             # Fallback to original
             logger.info("⚠️  Using original RAG Chatbot (enhanced not available)")
             use_base = not FINE_TUNED_MODEL_PATH.exists()
-            
-            if use_base:
-                st.info("🤖 Using base TinyLlama model (fine-tuned model not found)")
-            else:
-                st.success("🎯 Using fine-tuned Rackspace model")
-            
             chatbot = RAGChatbot(use_base_model=use_base)
             logger.info("Chatbot initialized successfully")
             return chatbot
@@ -63,142 +56,86 @@ def main():
     
     # Page configuration
     st.set_page_config(
-        page_title="Rackspace Knowledge Chatbot",
-        page_icon="🚀",
-        layout="wide",
-        initial_sidebar_state="expanded"
+        page_title="Rackspace Knowledge Assistant",
+        page_icon="🤖",
+        layout="centered",
+        initial_sidebar_state="collapsed"
     )
     
-    # Custom CSS
+    # Custom CSS for minimal, clean design
     st.markdown("""
         <style>
+        /* Hide sidebar */
+        [data-testid="stSidebar"] {
+            display: none;
+        }
+        
+        /* Main header styling */
         .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 10px;
-            color: white;
             text-align: center;
+            padding: 1.5rem 0;
+            border-bottom: 2px solid #e0e0e0;
             margin-bottom: 2rem;
         }
+        .main-header h1 {
+            color: #1f1f1f;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Chat messages */
         .stChatMessage {
-            background-color: #f0f2f6;
-            border-radius: 10px;
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
             padding: 1rem;
             margin-bottom: 1rem;
         }
-        /* Make all text black and readable */
-        .stChatMessage p, .stChatMessage div {
-            color: #000000 !important;
-        }
-        /* User message styling */
+        
+        /* User message */
         .stChatMessage[data-testid="user-message"] {
-            background-color: #e3f2fd !important;
+            background-color: #e3f2fd;
+            border-color: #2196f3;
         }
-        .stChatMessage[data-testid="user-message"] p {
-            color: #000000 !important;
-            font-weight: 500;
-        }
-        /* Assistant message styling */
+        
+        /* Assistant message */
         .stChatMessage[data-testid="assistant-message"] {
-            background-color: #f5f5f5 !important;
+            background-color: #f5f5f5;
+            border-color: #bdbdbd;
         }
-        .stChatMessage[data-testid="assistant-message"] p {
-            color: #000000 !important;
+        
+        /* Text color */
+        .stChatMessage p {
+            color: #1f1f1f !important;
+            line-height: 1.6;
         }
-        /* Ensure markdown text is black */
-        .element-container p, .stMarkdown p {
-            color: #000000 !important;
+        
+        /* Input box */
+        .stChatInputContainer {
+            border-top: 2px solid #e0e0e0;
+            padding-top: 1rem;
         }
-        .example-card {
-            background-color: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            border-radius: 5px;
-            color: #000000 !important;
-        }
-        /* Sidebar text */
-        .css-1d391kg p {
-            color: #000000 !important;
-        }
+        
+        /* Hide default Streamlit elements */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
         </style>
     """, unsafe_allow_html=True)
     
     # Initialize session state
     initialize_session_state()
     
-    # Header
+    # Simple header
     st.markdown("""
         <div class="main-header">
-            <h1>🚀 Rackspace Knowledge Chatbot</h1>
-            <p>Ask me anything about Rackspace Technology!</p>
-            <p style="font-size: 0.9em; margin-top: 10px;">
-                Powered by Fine-Tuned LLM + RAG System | Built with YOUR OWN Model (No Agents!)
-            </p>
+            <h1>🤖 Rackspace Knowledge Assistant</h1>
         </div>
     """, unsafe_allow_html=True)
     
-    # Sidebar
-    with st.sidebar:
-        st.header("📖 About")
-        st.markdown("""
-        ### Welcome! 👋
-        
-        I'm your Rackspace knowledge assistant. I can help you with:
-        
-        - 📖 Information about Rackspace Technology
-        - 🎯 Mission, vision, and services
-        - 🌟 Fanatical Experience
-        - ☁️ Cloud platforms & partnerships
-        - 📜 Company history
-        
-        **I remember our conversation!** Ask follow-up questions anytime.
-        """)
-        
-        st.markdown("---")
-        
-        st.header("💡 Example Questions")
-        examples = [
-            "What is Rackspace?",
-            "Tell me about Rackspace's mission",
-            "What services does Rackspace offer?",
-            "What is Fanatical Experience?",
-            "When was Rackspace founded?",
-            "Who are Rackspace's cloud partners?",
-            "What did I ask first?"
-        ]
-        
-        for example in examples:
-            if st.button(example, key=f"example_{example}", use_container_width=True):
-                # Add example to chat
-                st.session_state.messages.append({"role": "user", "content": example})
-                st.rerun()
-        
-        st.markdown("---")
-        
-        # Clear conversation button
-        if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            if st.session_state.chatbot:
-                st.session_state.chatbot.reset_conversation()
-            st.success("Conversation cleared!")
-            st.rerun()
-        
-        st.markdown("---")
-        
-        st.markdown("""
-        ### 🔧 System Info
-        - **Model**: TinyLlama-1.1B-Chat
-        - **Vector DB**: ChromaDB
-        - **Embeddings**: MiniLM-L6-v2
-        - **Documents**: 429 pages
-        - **Training Examples**: 4,107
-        - **Device**: Apple M3 (MPS)
-        """)
-    
     # Load chatbot (cached)
     if st.session_state.chatbot is None:
-        with st.spinner("🤖 Initializing chatbot... (first time may take 1-2 minutes)"):
+        with st.spinner("🤖 Initializing chatbot..."):
             st.session_state.chatbot = load_chatbot()
     
     if st.session_state.chatbot is None:
@@ -207,20 +144,19 @@ def main():
     
     # Display chat history
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        with st.chat_message(message["role"], avatar="🧑‍💼" if message["role"] == "user" else "🤖"):
             st.markdown(message["content"])
     
     # Chat input
-    if prompt := st.chat_input("Type your question here..."):
+    if prompt := st.chat_input("Type your message..."):
         # Add user message to chat
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="🧑‍💼"):
             st.markdown(prompt)
         
-        # Get bot response with loading indicator
-        with st.chat_message("assistant"):
-            # Show loading spinner with custom message
-            with st.spinner("🤔 Searching knowledge base and generating response..."):
+        # Get bot response
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("Thinking..."):
                 try:
                     response = st.session_state.chatbot.chat(prompt)
                     st.markdown(response)
@@ -229,15 +165,6 @@ def main():
                     error_msg = f"Sorry, I encountered an error: {str(e)}"
                     st.error(error_msg)
                     st.session_state.messages.append({"role": "assistant", "content": error_msg})
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-        <div style="text-align: center; color: #666; font-size: 0.9em;">
-            <p>💡 <strong>Tip:</strong> You can ask about previous questions! Try: "What did I ask first?"</p>
-            <p>🔓 <strong>100% Open Source</strong> • NO AGENTS • YOUR MODEL • YOUR DATA</p>
-        </div>
-    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

@@ -77,7 +77,7 @@ class EnhancedRAGChatbot:
         # Generate query embedding
         query_embedding = self.embedding_model.encode([query])[0]
         
-        # Search vector database
+        # Search vector database - get top K most relevant chunks
         results = self.collection.query(
             query_embeddings=[query_embedding.tolist()],
             n_results=top_k
@@ -86,9 +86,13 @@ class EnhancedRAGChatbot:
         # Process results - ONLY real documents with URLs
         context_parts = []
         sources = []
-        seen_content = set()
+        seen_urls = set()  # Track unique URLs
+        seen_content = set()  # Track unique content
         
-        for doc, metadata in zip(results['documents'][0], results['metadatas'][0]):
+        # Get distances for relevance scoring (lower distance = more relevant)
+        distances = results.get('distances', [[]])[0] if 'distances' in results else []
+        
+        for idx, (doc, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
             # Skip duplicates
             doc_hash = hash(doc[:100])
             if doc_hash in seen_content:
@@ -98,11 +102,25 @@ class EnhancedRAGChatbot:
             # Add document chunk
             context_parts.append(doc)
             
-            # Add source (ACTUAL URL!)
-            sources.append({
-                'url': metadata.get('url', 'N/A'),
-                'title': metadata.get('title', 'N/A')
-            })
+            # Get URL and title
+            url = metadata.get('url', 'N/A')
+            title = metadata.get('title', 'N/A')
+            
+            # Only add source if URL is unique and valid
+            if url and url != 'N/A' and url not in seen_urls:
+                seen_urls.add(url)
+                
+                # Add relevance score (distance from query)
+                relevance = 1.0 - (distances[idx] if idx < len(distances) else 0.5)
+                
+                sources.append({
+                    'url': url,
+                    'title': title,
+                    'relevance': relevance
+                })
+        
+        # Sort sources by relevance (highest first)
+        sources.sort(key=lambda x: x.get('relevance', 0), reverse=True)
         
         # Combine context
         context = '\n\n'.join(context_parts)
@@ -110,15 +128,17 @@ class EnhancedRAGChatbot:
         return context, sources
     
     def build_prompt(self, query: str, context: str, history: List[Dict[str, str]]) -> str:
-        """Build prompt for the model - Claude-like: concise, accurate, context-based"""
+        """Build prompt for the model - Force it to use ONLY the context"""
         
         prompt = f"""<|system|>
-You are a Rackspace support assistant. Answer the question concisely using ONLY the context provided. Keep responses brief (2-3 sentences). If the context doesn't contain the answer, say "I don't have information about that."
+You are a helpful assistant. Answer the question using ONLY the information in the Context below. Do not make up information. Be concise and accurate.
 <|user|>
 Context:
 {context}
 
 Question: {query}
+
+Answer using ONLY the information above:
 <|assistant|>
 """
         
@@ -130,17 +150,18 @@ Question: {query}
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         
-        # Generate - Claude-like: concise and accurate
+        # Generate with stricter parameters to reduce hallucination
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=100,  # SHORT: Force concise answers (2-3 sentences)
-                temperature=0.3,
+                max_new_tokens=150,  # Reasonable length
+                temperature=0.1,  # Very low temperature for factual responses
                 do_sample=True,
-                top_p=0.85,
-                repetition_penalty=1.2,
-                no_repeat_ngram_size=3,
-                pad_token_id=self.tokenizer.eos_token_id
+                top_p=0.9,
+                repetition_penalty=1.3,  # Higher penalty for repetition
+                no_repeat_ngram_size=4,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
             )
         
         # Decode
@@ -150,27 +171,45 @@ Question: {query}
         if "<|assistant|>" in response:
             response = response.split("<|assistant|>")[-1].strip()
         
-        # Remove system prompt leakage
+        # Clean up aggressive extraction
+        # Remove everything before first actual sentence
         lines = response.split('\n')
         clean_lines = []
-        skip_system = False
         
         for line in lines:
             line = line.strip()
-            # Skip system prompt patterns
-            if any(pattern in line.lower() for pattern in [
-                'you are a', 'rackspace support assistant', 
-                'answer the question', 'context:', 'question:'
+            # Skip system-like patterns
+            if any(skip in line.lower() for skip in [
+                'you are', 'answer the question', 'context:', 'question:', 
+                'using only', 'be concise', '<|', '|>'
             ]):
-                skip_system = True
                 continue
-            if skip_system and not line:
+            # Skip empty lines
+            if not line:
                 continue
-            if line:
-                skip_system = False
-                clean_lines.append(line)
+            clean_lines.append(line)
         
         response = ' '.join(clean_lines)
+        
+        # If response is too short or still has issues, extract meaningful content
+        if len(response) < 20 or 'based on actual answers' in response.lower():
+            # Try to find the actual answer in the response
+            sentences = response.split('.')
+            good_sentences = []
+            for sent in sentences:
+                sent = sent.strip()
+                # Skip bad patterns
+                if any(bad in sent.lower() for bad in [
+                    'based on actual', 'answer based', 'yes!', 'here\'s some quick facts'
+                ]):
+                    continue
+                if sent and len(sent) > 10:
+                    good_sentences.append(sent)
+            
+            if good_sentences:
+                response = '. '.join(good_sentences[:3])  # Max 3 sentences
+                if response and not response.endswith('.'):
+                    response += '.'
         
         # Clean up
         response = self.clean_response(response)
@@ -200,35 +239,10 @@ Question: {query}
         return text.strip()
     
     def format_sources(self, sources: List[Dict], response: str = "") -> str:
-        """Format sources for display - Add 'Learn more' only if helpful"""
-        if not sources:
-            return ""
-        
-        source_text = "\n\n📚 **Sources:**\n"
-        
-        # Show unique URLs only
-        seen_urls = set()
-        count = 1
-        first_url = None
-        
-        for source in sources:
-            url = source.get('url', '')
-            if url and url != 'N/A' and url not in seen_urls:
-                if count == 1:
-                    first_url = url
-                seen_urls.add(url)
-                source_text += f"{count}. {url}\n"
-                count += 1
-                if count > 3:  # Max 3 sources
-                    break
-        
-        # Add "Learn more" ONLY if response seems complete and informative
-        # (Not for "I don't have information" responses)
-        if first_url and response and len(response) > 50:
-            if "don't have" not in response.lower() and "no information" not in response.lower():
-                source_text += f"\n💡 **Learn more:** {first_url}\n"
-        
-        return source_text
+        """Format sources for display - DISABLED until we fix the retrieval issue"""
+        # Sources are showing same URLs for every question
+        # Disable until we properly fix the vector DB retrieval
+        return ""
     
     def chat(self, user_message: str) -> str:
         """Main chat interface - Claude-like: accurate, concise, context-based"""
@@ -241,8 +255,8 @@ Question: {query}
         # Generate response
         response = self.generate_response(prompt)
         
-        # Add sources with conditional "Learn more"
-        response_with_sources = response + self.format_sources(sources, response)
+        # Don't add sources - they're showing same URLs for every question
+        # Just return the clean response
         
         # Update conversation history
         self.conversation_history.append({
@@ -254,7 +268,7 @@ Question: {query}
         if len(self.conversation_history) > 5:
             self.conversation_history = self.conversation_history[-5:]
         
-        return response_with_sources
+        return response
     
     def reset_conversation(self):
         """Reset conversation history"""
