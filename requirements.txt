@@ -1,0 +1,33 @@
+# Core ML libraries
+torch>=2.0.0
+transformers>=4.35.0
+sentence-transformers>=2.2.2
+accelerate>=0.24.0
+peft>=0.6.0
+bitsandbytes>=0.41.0
+datasets>=2.14.0
+
+# Vector database and retrieval
+chromadb>=0.4.15
+faiss-cpu>=1.7.4
+
+# Web scraping and data collection
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+selenium>=4.15.0
+lxml>=4.9.3
+
+# UI and API
+gradio>=4.7.0
+flask>=3.0.0
+
+# Utilities
+numpy>=1.24.0
+pandas>=2.0.0
+tqdm>=4.66.0
+python-dotenv>=1.0.0
+
+# Text processing
+nltk>=3.8.1
+langchain>=0.1.0
+langchain-community>=0.0.10
