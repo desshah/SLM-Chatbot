@@ -5,38 +5,35 @@ This version:
 2. Leverages training Q&A pairs for better responses
 3. Provides accurate, context-based answers
 4. No repetitive navigation text
+5. Uses Groq API for fast, high-quality responses
 """
 
 import chromadb
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+from groq import Groq
 from typing import List, Dict, Tuple
 import re
 
 from config import (
-    VECTOR_DB_DIR, EMBEDDING_MODEL, BASE_MODEL_NAME,
-    FINE_TUNED_MODEL_PATH, TOP_K_RETRIEVAL, DEVICE, USE_MPS
+    VECTOR_DB_DIR, EMBEDDING_MODEL, GROQ_API_KEY, GROQ_MODEL,
+    TOP_K_RETRIEVAL
 )
 
 
 class EnhancedRAGChatbot:
-    """Enhanced RAG chatbot with better context utilization"""
+    """Enhanced RAG chatbot with Groq API"""
     
     def __init__(self):
-        print("🤖 Initializing Enhanced RAG Chatbot...")
+        print("🤖 Initializing Enhanced RAG Chatbot with Groq...")
         
-        # Set device
-        if USE_MPS and torch.backends.mps.is_available():
-            self.device = "mps"
-            print("✅ Using Apple Silicon (MPS)")
-        elif torch.cuda.is_available():
-            self.device = "cuda"
-            print("✅ Using CUDA")
-        else:
-            self.device = "cpu"
-            print("✅ Using CPU")
+        # Initialize Groq client
+        if not GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY environment variable not set!")
+        
+        self.groq_client = Groq(api_key=GROQ_API_KEY)
+        self.groq_model = GROQ_MODEL
+        print(f"✅ Using Groq model: {self.groq_model}")
         
         # Load vector database
         print("📚 Loading vector database...")
@@ -46,31 +43,14 @@ class EnhancedRAGChatbot:
         )
         self.collection = self.client.get_collection("rackspace_knowledge")
         
-        # Load embedding model
+        # Load embedding model (still needed for RAG)
         print(f"🔤 Loading embedding model: {EMBEDDING_MODEL}")
         self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-        
-        # Load LLM - USE BASE MODEL (fine-tuned model ignores context)
-        print(f"🧠 Loading BASE LLM (no fine-tuning): {BASE_MODEL_NAME}")
-        print("   ⚠️  Fine-tuned model disabled - it was overtrained and ignores RAG context")
-        
-        self.tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_NAME)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            BASE_MODEL_NAME,
-            torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
-            device_map=self.device if self.device != "mps" else None,
-            low_cpu_mem_usage=True
-        )
-        
-        if self.device == "mps":
-            self.model = self.model.to(self.device)
-        
-        self.model.eval()
         
         # Conversation history
         self.conversation_history: List[Dict[str, str]] = []
         
-        print("✅ Enhanced RAG Chatbot ready!")
+        print("✅ Enhanced RAG Chatbot with Groq ready!")
     
     def retrieve_context(self, query: str, top_k: int = TOP_K_RETRIEVAL) -> Tuple[str, List[Dict]]:
         """Retrieve relevant context with source information"""
@@ -145,31 +125,31 @@ Answer using ONLY the information above:
         return prompt
     
     def generate_response(self, prompt: str) -> str:
-        """Generate response from the model"""
-        # Tokenize
-        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        
-        # Generate with stricter parameters to reduce hallucination
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=150,  # Reasonable length
-                temperature=0.1,  # Very low temperature for factual responses
-                do_sample=True,
+        """Generate response using Groq API"""
+        try:
+            chat_completion = self.groq_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant. Answer questions using ONLY the provided context. Be concise and accurate."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                model=self.groq_model,
+                temperature=0.1,
+                max_tokens=256,
                 top_p=0.9,
-                repetition_penalty=1.3,  # Higher penalty for repetition
-                no_repeat_ngram_size=4,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id
             )
-        
-        # Decode
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract only the assistant's response
-        if "<|assistant|>" in response:
-            response = response.split("<|assistant|>")[-1].strip()
+            
+            response = chat_completion.choices[0].message.content
+            return self.clean_response(response)
+            
+        except Exception as e:
+            print(f"❌ Groq API error: {e}")
+            return "I'm having trouble generating a response right now. Please try again."
         
         # Clean up aggressive extraction
         # Remove everything before first actual sentence
@@ -393,29 +373,30 @@ Provide a concise 2-4 sentence summary with inline citations:
 <|assistant|>
 """
         
-        # Generate summary using LLM
-        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=200,  # Allow longer for citations
-                temperature=0.4,  # Higher for more natural language
-                do_sample=True,
+        # Generate summary using Groq API
+        try:
+            chat_completion = self.groq_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that provides concise summaries with citations. Summarize in 2-4 clear sentences using the context. Focus on factual, technical details. Avoid marketing language."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"{history_context}Context:\n{context[:1500]}\n\nQuestion: {query}\n\nProvide a concise 2-4 sentence summary with inline citations:"
+                    }
+                ],
+                model=self.groq_model,
+                temperature=0.4,
+                max_tokens=256,
                 top_p=0.9,
-                repetition_penalty=1.3,
-                no_repeat_ngram_size=3,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id
             )
-        
-        # Decode response
-        summary = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract only assistant's response
-        if "<|assistant|>" in summary:
-            summary = summary.split("<|assistant|>")[-1].strip()
+            
+            summary = chat_completion.choices[0].message.content
+            
+        except Exception as e:
+            print(f"❌ Groq API error: {e}")
+            return "I'm having trouble generating a summary right now. Please try again."
         
         # Clean up
         summary = self.clean_response(summary)

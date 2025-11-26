@@ -3,6 +3,10 @@ Configuration file for Rackspace Knowledge Chatbot
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent
@@ -15,10 +19,17 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 for dir_path in [DATA_DIR, MODELS_DIR, VECTOR_DB_DIR, LOGS_DIR]:
     dir_path.mkdir(exist_ok=True)
 
-# Model configuration
-BASE_MODEL_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"  # Small, efficient model for M3 Mac
-# Alternative: "microsoft/phi-2" (2.7B parameters)
-FINE_TUNED_MODEL_PATH = MODELS_DIR / "rackspace_finetuned"
+# Model configuration - GROQ API
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_MODEL = "llama-3.3-70b-versatile"  # Fast and powerful model from Groq
+# Alternative Groq models:
+# - "llama-3.1-70b-versatile"
+# - "mixtral-8x7b-32768"
+# - "gemma2-9b-it"
+
+# Legacy local model configs (no longer used)
+# BASE_MODEL_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+# FINE_TUNED_MODEL_PATH = MODELS_DIR / "rackspace_finetuned"
 
 # Embedding model for RAG
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # Fast and efficient

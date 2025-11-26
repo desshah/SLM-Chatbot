@@ -1,20 +1,22 @@
 """
-RAG (Retrieval-Augmented Generation) pipeline with conversation history
-Combines vector database retrieval with fine-tuned model generation
+RAG (Retrieval-Augmented Generation) pipeline with Groq API
+Combines vector database retrieval with Groq LLM generation
 """
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from groq import Groq
+import chromadb
+from chromadb.config import Settings
+from sentence_transformers import SentenceTransformer
 from typing import List, Tuple, Dict
 import logging
 from pathlib import Path
-from vector_db import VectorDBManager
 from config import (
-    FINE_TUNED_MODEL_PATH,
-    BASE_MODEL_NAME,
+    VECTOR_DB_DIR,
+    EMBEDDING_MODEL,
+    GROQ_API_KEY,
+    GROQ_MODEL,
     MAX_NEW_TOKENS,
     TEMPERATURE,
     TOP_P,
-    DO_SAMPLE,
     MAX_HISTORY_LENGTH,
     TOP_K_RETRIEVAL
 )
@@ -67,73 +69,53 @@ class ConversationHistory:
 
 
 class RAGChatbot:
-    """RAG-based chatbot with conversation history"""
+    """RAG-based chatbot with Groq API"""
     
-    def __init__(self, model_path: Path = FINE_TUNED_MODEL_PATH, use_base_model: bool = False):
-        self.device = self._setup_device()
-        logger.info(f"Using device: {self.device}")
+    def __init__(self):
+        logger.info("🤖 Initializing RAG Chatbot with Groq...")
         
-        # Load model and tokenizer
-        if use_base_model or not model_path.exists():
-            logger.warning(f"Fine-tuned model not found at {model_path}, using base model")
-            model_path = BASE_MODEL_NAME
+        # Initialize Groq client
+        if not GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY not found! Please set it in .env file")
         
-        self.load_model(model_path)
+        self.groq_client = Groq(api_key=GROQ_API_KEY)
+        self.groq_model = GROQ_MODEL
+        logger.info(f"✅ Using Groq model: {self.groq_model}")
         
-        # Initialize vector database
-        logger.info("Initializing vector database...")
-        self.vector_db = VectorDBManager()
+        # Load vector database
+        logger.info("📚 Loading vector database...")
+        self.client = chromadb.PersistentClient(
+            path=str(VECTOR_DB_DIR),
+            settings=Settings(anonymized_telemetry=False)
+        )
+        self.collection = self.client.get_collection("rackspace_knowledge")
+        
+        # Load embedding model
+        logger.info(f"🔤 Loading embedding model: {EMBEDDING_MODEL}")
+        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         
         # Initialize conversation history
         self.conversation = ConversationHistory()
         
-        logger.info("RAG Chatbot initialized successfully")
-    
-    def _setup_device(self):
-        """Set up device for inference"""
-        if torch.backends.mps.is_available():
-            return torch.device("mps")
-        elif torch.cuda.is_available():
-            return torch.device("cuda")
-        else:
-            return torch.device("cpu")
-    
-    def load_model(self, model_path):
-        """Load model and tokenizer"""
-        logger.info(f"Loading model from {model_path}")
-        
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
-            trust_remote_code=True
-        )
-        
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-        
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.float16 if self.device.type != "cpu" else torch.float32,
-            device_map=None,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True
-        )
-        
-        self.model = self.model.to(self.device)
-        self.model.eval()
-        
-        logger.info("Model loaded successfully")
+        logger.info("✅ RAG Chatbot ready!")
     
     def retrieve_context(self, query: str, top_k: int = TOP_K_RETRIEVAL) -> str:
         """Retrieve relevant context from vector database"""
-        results = self.vector_db.search(query, top_k=top_k)
+        # Generate query embedding
+        query_embedding = self.embedding_model.encode([query])[0]
         
-        if not results:
+        # Search vector database
+        results = self.collection.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=top_k
+        )
+        
+        if not results or not results['documents'][0]:
             return ""
         
         # Combine retrieved documents
         context_parts = []
-        for i, (doc, metadata, score) in enumerate(results, 1):
+        for i, doc in enumerate(results['documents'][0], 1):
             context_parts.append(f"[Source {i}]: {doc}")
         
         context = "\n\n".join(context_parts)
@@ -168,47 +150,31 @@ class RAGChatbot:
         return prompt
     
     def generate_response(self, prompt: str) -> str:
-        """Generate response using the model"""
-        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
-        
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=100,  # Shorter for more focused responses
-                temperature=1.0,  # No temperature (deterministic)
-                do_sample=False,  # Greedy decoding - most likely tokens
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-                num_beams=1,  # No beam search
-                repetition_penalty=1.2,  # Penalize repetition
-                no_repeat_ngram_size=3  # Prevent repeating 3-grams
+        """Generate response using Groq API"""
+        try:
+            chat_completion = self.groq_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a Rackspace Technology expert. Answer questions using ONLY the information provided in the context. Be direct and concise - answer in 2-4 sentences maximum."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                model=self.groq_model,
+                temperature=0.1,
+                max_tokens=MAX_NEW_TOKENS,
+                top_p=TOP_P,
             )
-        
-        # Decode only the new tokens (response)
-        response = self.tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
-        
-        # Clean up response - remove repetitions
-        response = response.strip()
-        
-        # Stop at first sentence if it's repeating
-        sentences = response.split('.')
-        if len(sentences) > 1:
-            # Check if sentences are repeating
-            seen = set()
-            clean_sentences = []
-            for sent in sentences:
-                sent_clean = sent.strip().lower()
-                if sent_clean and sent_clean not in seen and len(sent_clean) > 10:
-                    seen.add(sent_clean)
-                    clean_sentences.append(sent.strip())
             
-            if clean_sentences:
-                response = '. '.join(clean_sentences[:3])  # Max 3 sentences
-                if not response.endswith('.'):
-                    response += '.'
-        
-        return response.strip()
+            response = chat_completion.choices[0].message.content
+            return response.strip()
+            
+        except Exception as e:
+            logger.error(f"Groq API error: {e}")
+            return "I'm having trouble generating a response right now. Please try again."
     
     def chat(self, user_message: str) -> str:
         """Main chat function with RAG and history"""

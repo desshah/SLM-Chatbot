@@ -3,17 +3,11 @@ Streamlit UI for Rackspace Knowledge Chatbot
 Beautiful, simple chat interface with conversation history
 """
 import streamlit as st
-# Use enhanced chatbot with better RAG and training data integration
-try:
-    from enhanced_rag_chatbot import get_chatbot
-    USING_ENHANCED = True
-except ImportError:
-    from rag_chatbot import RAGChatbot
-    USING_ENHANCED = False
+# Use enhanced chatbot with Groq API
+from enhanced_rag_chatbot import get_chatbot, reset
     
 import logging
 from pathlib import Path
-from config import FINE_TUNED_MODEL_PATH
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,22 +18,13 @@ def load_chatbot():
     """Load chatbot once and cache it"""
     try:
         logger.info("Initializing chatbot...")
-        
-        if USING_ENHANCED:
-            # Use enhanced chatbot (simpler interface)
-            logger.info("✅ Using Enhanced RAG Chatbot")
-            chatbot = get_chatbot()
-            return chatbot
-        else:
-            # Fallback to original
-            logger.info("⚠️  Using original RAG Chatbot (enhanced not available)")
-            use_base = not FINE_TUNED_MODEL_PATH.exists()
-            chatbot = RAGChatbot(use_base_model=use_base)
-            logger.info("Chatbot initialized successfully")
-            return chatbot
+        logger.info("✅ Using Enhanced RAG Chatbot with Groq API")
+        chatbot = get_chatbot()
+        return chatbot
     except Exception as e:
         logger.error(f"Error initializing chatbot: {e}")
         st.error(f"❌ Failed to initialize chatbot: {e}")
+        st.info("💡 Make sure GROQ_API_KEY is set in your .env file")
         return None
 
 
