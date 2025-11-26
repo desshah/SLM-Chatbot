@@ -64,58 +64,165 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # Custom CSS for minimal, clean design
+    # Custom CSS for professional, calm theme
     st.markdown("""
         <style>
+        /* Overall app background - soft warm white */
+        .stApp {
+            background-color: #fafafa;
+        }
+        
+        /* Main container background */
+        .main {
+            background-color: #fafafa;
+        }
+        
         /* Hide sidebar */
         [data-testid="stSidebar"] {
             display: none;
         }
         
-        /* Main header styling */
+        /* Main header styling - elegant navy */
         .main-header {
             text-align: center;
             padding: 1.5rem 0;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid #e8e8e8;
             margin-bottom: 2rem;
+            background-color: #ffffff;
         }
         .main-header h1 {
-            color: #1f1f1f;
+            color: #1a365d;
             font-size: 2rem;
             margin-bottom: 0.5rem;
+            font-weight: 600;
         }
         
-        /* Chat messages */
+        /* Section headers - professional navy */
+        h3 {
+            color: #2d3748 !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Chat messages - crisp white cards */
         .stChatMessage {
             background-color: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            padding: 1rem;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            padding: 1.2rem;
             margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         
-        /* User message */
+        /* User message - subtle blue accent */
         .stChatMessage[data-testid="user-message"] {
-            background-color: #e3f2fd;
-            border-color: #2196f3;
+            background-color: #f7fafc;
+            border-left: 4px solid #4299e1;
+            border-right: 1px solid #e8e8e8;
+            border-top: 1px solid #e8e8e8;
+            border-bottom: 1px solid #e8e8e8;
         }
         
-        /* Assistant message */
+        /* Assistant message - clean white */
         .stChatMessage[data-testid="assistant-message"] {
-            background-color: #f5f5f5;
-            border-color: #bdbdbd;
+            background-color: #ffffff;
+            border: 1px solid #e8e8e8;
         }
         
-        /* Text color */
+        /* Text color - professional dark gray */
         .stChatMessage p {
-            color: #1f1f1f !important;
-            line-height: 1.6;
+            color: #2d3748 !important;
+            line-height: 1.7;
+            font-size: 0.95rem;
         }
         
-        /* Input box */
+        /* List items in chat messages */
+        .stChatMessage ul, .stChatMessage ol {
+            color: #2d3748 !important;
+        }
+        
+        .stChatMessage li {
+            color: #2d3748 !important;
+            margin-bottom: 0.4rem;
+        }
+        
+        /* Links in chat messages - professional blue */
+        .stChatMessage a {
+            color: #3182ce !important;
+            text-decoration: none !important;
+            border-bottom: 1px solid #bee3f8;
+        }
+        
+        .stChatMessage a:hover {
+            color: #2c5282 !important;
+            border-bottom-color: #3182ce;
+        }
+        
+        /* All text elements in chat */
+        .stChatMessage * {
+            color: #2d3748 !important;
+        }
+        
+        /* Override for links */
+        .stChatMessage a, .stChatMessage a * {
+            color: #3182ce !important;
+        }
+        
+        /* Input box - clean and professional */
         .stChatInputContainer {
-            border-top: 2px solid #e0e0e0;
+            border-top: 2px solid #e8e8e8;
             padding-top: 1rem;
+            background-color: #fafafa;
+        }
+        
+        /* Input text color */
+        .stChatInputContainer input {
+            color: #2d3748 !important;
+            background-color: #ffffff !important;
+            border-color: #cbd5e0 !important;
+        }
+        
+        .stChatInputContainer input:focus {
+            border-color: #4299e1 !important;
+            box-shadow: 0 0 0 1px #4299e1 !important;
+        }
+        
+        /* Primary button (selected) - professional blue */
+        button[kind="primary"] {
+            background-color: #3182ce !important;
+            color: #ffffff !important;
+            border: 2px solid #3182ce !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        button[kind="primary"]:hover {
+            background-color: #2c5282 !important;
+            border-color: #2c5282 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(49, 130, 206, 0.3) !important;
+        }
+        
+        /* Secondary button (unselected) - subtle gray */
+        button[kind="secondary"] {
+            background-color: #ffffff !important;
+            color: #4a5568 !important;
+            border: 2px solid #e2e8f0 !important;
+            font-weight: 500 !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        button[kind="secondary"]:hover {
+            background-color: #f7fafc !important;
+            border-color: #cbd5e0 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        }
+        
+        /* All button text should be visible */
+        button p {
+            color: inherit !important;
         }
         
         /* Hide default Streamlit elements */
