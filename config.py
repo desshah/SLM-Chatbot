@@ -21,8 +21,9 @@ for dir_path in [DATA_DIR, MODELS_DIR, VECTOR_DB_DIR, LOGS_DIR]:
 
 # Model configuration - GROQ API
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-GROQ_MODEL = "llama-3.3-70b-versatile"  # Fast and powerful model from Groq
+GROQ_MODEL = "openai/gpt-oss-120b"  # OpenAI GPT OSS 120B model via Groq
 # Alternative Groq models:
+# - "llama-3.3-70b-versatile"
 # - "llama-3.1-70b-versatile"
 # - "mixtral-8x7b-32768"
 # - "gemma2-9b-it"

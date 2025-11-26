@@ -32,7 +32,7 @@ def test_groq_api():
                     "content": "Say 'Hello from Groq!' if you can hear me.",
                 }
             ],
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
         )
         
         response = chat_completion.choices[0].message.content
