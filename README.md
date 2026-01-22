@@ -1,4 +1,4 @@
-# 🎯 Rackspace Knowledge Chatbot - Enhanced Version
+# 🎯 Knowledge-based Chatbot 
 
 ## 🚀 Quick Start
 
@@ -13,7 +13,7 @@ streamlit run streamlit_app.py
 # 3. Open browser: http://localhost:8501
 ```
 
-## 📁 Enhanced Project Structure
+## 📁 Project Structure
 
 ```
 chatbot-rackspace/
@@ -35,7 +35,7 @@ chatbot-rackspace/
 └── vector_db/                          # ChromaDB (1,158 chunks from 507 docs)
 ```
 
-## ✨ What's New - Enhanced with Training Data
+## ✨ What's New - Training Data
 
 **Data Integration from rackspace-rag-chatbot:**
 - ✅ **494 new documents** - Comprehensive Rackspace documentation
@@ -44,7 +44,7 @@ chatbot-rackspace/
 - ✅ **1,158 vector chunks** - Enhanced retrieval capability
 - ✅ **Smart deduplication** - No duplicate content
 
-**Coverage Improvements:**
+**Coverage :**
 - ✅ Cloud migration services (AWS, Azure, Google Cloud)
 - ✅ Managed services and platform guides
 - ✅ Technical documentation and how-to guides
