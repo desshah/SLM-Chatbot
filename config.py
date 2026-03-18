@@ -10,7 +10,12 @@ load_dotenv()
 
 # Project paths
 PROJECT_ROOT = Path(__file__).parent
-DATA_DIR = PROJECT_ROOT / "data"
+
+# Support both legacy `data/` and current `document/` folder names.
+# Streamlit Cloud deployments should work regardless of which one exists.
+LEGACY_DATA_DIR = PROJECT_ROOT / "data"
+CURRENT_DATA_DIR = PROJECT_ROOT / "document"
+DATA_DIR = LEGACY_DATA_DIR if LEGACY_DATA_DIR.exists() else CURRENT_DATA_DIR
 MODELS_DIR = PROJECT_ROOT / "models"
 VECTOR_DB_DIR = PROJECT_ROOT / "vector_db"
 LOGS_DIR = PROJECT_ROOT / "logs"
